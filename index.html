@@ -1,0 +1,1442 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Beyond The Voice 엘리베이터</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;1,6..96,400;1,6..96,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* Layout: one night-building screen. Blurred backdrop of the current trainee, story column left, glass elevator right, roster strip below. Scroll-film overlay on top. */
+:root {
+  --ink: #0b0c10;
+  --paper: #f3f1ec;
+  --dim: #a4a6b0;
+  --line: rgba(243, 241, 236, 0.14);
+  --accent: #63e3cc;
+  --display: 'Bodoni Moda', 'Noto Serif KR', Georgia, serif;
+  --body: 'IBM Plex Sans KR', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /* tokens the elevator component reads */
+  --background: #0b0c10; --foreground: #f3f1ec;
+  --card: rgba(16, 18, 26, 0.62); --card-foreground: #f3f1ec;
+  --muted: #1a1d27; --muted-foreground: #a4a6b0;
+  --border: rgba(243, 241, 236, 0.14); --ring: #f3f1ec;
+  color-scheme: dark;
+}
+html, body { background: var(--ink); color: var(--paper); }
+body { font-family: var(--body); overflow-x: hidden; word-break: keep-all; }
+
+.backdrop { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: var(--ink); }
+.backdrop img { position: absolute; inset: -10%; width: 120%; height: 120%; max-width: none; object-fit: cover; filter: blur(64px) saturate(1.25) brightness(0.5); opacity: 0; transition: opacity 1.1s ease; }
+.backdrop img.on { opacity: 1; }
+.backdrop::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 90% at 70% 40%, transparent 0%, rgba(11, 12, 16, 0.55) 60%, rgba(11, 12, 16, 0.92) 100%); }
+
+.wrap { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 22px 40px; display: flex; flex-direction: column; gap: clamp(28px, 4vw, 44px); }
+
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.brand { font-family: var(--display); font-style: italic; font-size: 22px; letter-spacing: 0.01em; }
+.top .meta { font-size: 13px; letter-spacing: 0.06em; color: var(--paper); opacity: .8; }
+
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 520px); gap: clamp(28px, 5vw, 64px); align-items: center; }
+@media (max-width: 920px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+
+.story { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.room { display: flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; transition: color .8s ease; }
+.room::before { content: ""; width: 28px; height: 1px; background: currentColor; }
+.name-en { margin: 0; font-family: var(--display); font-style: italic; font-weight: 400; font-size: clamp(52px, 8.4vw, 112px); line-height: 0.92; letter-spacing: -0.02em; text-wrap: balance; }
+.name-ko { font-size: 17px; font-weight: 600; letter-spacing: 0.04em; color: var(--paper); }
+.name-ko span { color: var(--dim); font-weight: 400; margin-left: 10px; }
+.line { margin: 6px 0 0; font-family: var(--display); font-style: italic; font-size: clamp(20px, 2.2vw, 26px); line-height: 1.4; color: var(--paper); opacity: .92; max-width: 26ch; }
+.hint { margin: 10px 0 0; font-size: 13px; line-height: 1.6; color: var(--dim); max-width: 40ch; }
+.swap { animation: swapIn .7s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes swapIn { from { opacity: 0; transform: translateY(10px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+
+.roster { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.roster button { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 0; border: 0; background: none; color: var(--dim); font: inherit; text-align: left; cursor: pointer; }
+.roster .ph { aspect-ratio: 3 / 4; max-width: 100%; border-radius: 10px; overflow: hidden; outline: 1px solid var(--line); outline-offset: -1px; transition: outline-color .3s ease, transform .3s ease; }
+.roster img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; filter: grayscale(1) brightness(.75); transition: filter .5s ease; }
+.roster .cap { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; }
+.roster .cap b { font-weight: 500; color: inherit; }
+.roster .cap i { font-family: var(--mono); font-style: normal; font-size: 11px; letter-spacing: .1em; }
+.roster button:hover img, .roster button[aria-pressed="true"] img { filter: none; }
+.roster button[aria-pressed="true"] { color: var(--paper); }
+.roster button[aria-pressed="true"] .ph { outline: 2px solid var(--c); }
+.roster button:focus-visible .ph { outline: 2px solid var(--paper); }
+@media (max-width: 520px) { .roster .cap i { display: none; } .roster { gap: 6px; } }
+
+.foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--dim); border-top: 1px solid var(--line); padding-top: 14px; }
+
+.film { animation: filmIn .55s ease both; }
+@keyframes filmIn { from { opacity: 0; } to { opacity: 1; } }
+.endlink { color: #fff; text-decoration: none; }
+.endlink:hover .arrow, .endlink:focus-visible .arrow { transform: translateX(6px); }
+.endlink:focus-visible { outline: 2px solid #fff; outline-offset: 8px; border-radius: 6px; }
+.arrow { display: inline-block; transition: transform .25s ease; }
+.chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,.3); background: rgba(10,11,16,.45); backdrop-filter: blur(8px); color: #fff; text-decoration: none; font-size: 14px; }
+.chip:hover { background: rgba(10,11,16,.7); }
+.chip:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.dot { width: 7px; height: 7px; border-radius: 99px; background: #ff4d5e; box-shadow: 0 0 0 4px rgba(255,77,94,.25); }
+
+
+/* locked trainees */
+.locked { display: flex; flex-direction: column; gap: 8px; color: var(--dim); opacity: .7; }
+.locked .ph { display: grid; place-items: center; background: repeating-linear-gradient(135deg, rgba(243,241,236,.04) 0 8px, transparent 8px 16px); }
+.locked .ph span { font-family: var(--display); font-style: italic; font-size: clamp(22px, 3vw, 40px); color: var(--dim); }
+
+/* Elevator, staged dramatically: lit car, brushed doors, light spill on arrival, slow push-in */
+[data-slot="elevator-doors-gallery"] { max-width: 600px !important; box-shadow: 0 50px 140px -50px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.08) !important; }
+[data-car] { transition: box-shadow .7s ease; }
+[data-phase="idle"] [data-car] { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent), 0 30px 100px -30px var(--accent) !important; }
+[data-phase="opening"] [data-car] { box-shadow: 0 0 0 2px var(--accent), 0 0 160px -10px var(--accent) !important; }
+[data-phase="closing"] [data-car], [data-phase="travelling"] [data-car] { box-shadow: 0 0 0 1px rgba(255,255,255,.08) !important; }
+[data-door="left"] { background: linear-gradient(90deg, #14161d 0%, #2b2f3b 45%, #4a505f 92%, #6b7182 100%) !important; }
+[data-door="right"] { background: linear-gradient(270deg, #14161d 0%, #2b2f3b 45%, #4a505f 92%, #6b7182 100%) !important; }
+[data-phase="opening"] [data-doorway]::after { content: ""; position: absolute; inset: 0; z-index: 15; pointer-events: none; background: radial-gradient(55% 70% at 50% 50%, color-mix(in srgb, var(--accent) 50%, white) 0%, transparent 72%); mix-blend-mode: screen; animation: spill 1s ease-out both; }
+@keyframes spill { 0% { opacity: 0 } 22% { opacity: .95 } 100% { opacity: 0 } }
+[data-landing] { position: relative; }
+[data-landing]::after { content: ""; position: absolute; left: 6%; right: 6%; bottom: -30px; height: 46px; background: radial-gradient(closest-side, var(--accent), transparent); opacity: .5; filter: blur(10px); transition: opacity .7s ease; pointer-events: none; }
+[data-phase="closing"] [data-landing]::after, [data-phase="travelling"] [data-landing]::after { opacity: .08; }
+[data-indicator-value] { color: var(--accent); text-shadow: 0 0 14px var(--accent); }
+[data-floor-view] { transition: transform 7s cubic-bezier(.2,.8,.2,1); }
+[data-phase="idle"] [data-floor-view] { transform: scale(1.07); }
+@media (prefers-reduced-motion: reduce) { [data-floor-view] { transition: none; } [data-phase="idle"] [data-floor-view] { transform: none; } [data-phase="opening"] [data-doorway]::after { animation: none; opacity: 0; } }
+
+/* 6F locked room */
+.locked-room { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: #050507; overflow: hidden; padding-inline: max(20px, env(safe-area-inset-left, 0px)); }
+.lr-bg { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; filter: blur(3px) brightness(.32) saturate(.9); transform: scale(1.06); }
+.lr-body { position: relative; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; max-width: 560px; }
+.lr-tag { margin: 0; font-family: var(--mono); font-size: 12px; letter-spacing: .3em; color: #ffb547; }
+.lr-title { position: relative; margin: 0; text-wrap: balance; font-size: clamp(30px, 5vw, 52px); font-weight: 600; color: #fff; letter-spacing: -.01em; }
+.lr-title::before, .lr-title::after { content: attr(data-text); position: absolute; inset: 0; opacity: .7; }
+.lr-title::before { color: #ffb547; animation: glitch 2.4s steps(1) infinite; }
+.lr-title::after { color: #63e3cc; animation: glitch 2.4s steps(1) infinite reverse; mix-blend-mode: screen; }
+@keyframes glitch { 0%,86%,100% { transform: none; clip-path: inset(0 0 100% 0); } 88% { transform: translate(-3px,1px); clip-path: inset(20% 0 55% 0); } 92% { transform: translate(3px,-1px); clip-path: inset(60% 0 15% 0); } 95% { transform: translate(-2px,0); clip-path: inset(40% 0 40% 0); } }
+.lr-sub { margin: 0; font-size: 15px; line-height: 1.7; color: rgba(255,255,255,.78); }
+.lr-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
+.lr-primary { background: #ffb547 !important; color: #14110b !important; border-color: #ffb547 !important; font-weight: 600; }
+.roster button:has(img[src*="locked"]) img { filter: brightness(.8); }
+
+/* goods */
+.goods { display: flex; flex-direction: column; gap: 18px; }
+.goods-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.goods-head h2 { margin: 0; font-family: var(--display); font-style: italic; font-weight: 400; font-size: clamp(30px, 4vw, 44px); }
+.goods-head span { font-family: var(--mono); font-size: 11px; letter-spacing: .2em; color: var(--dim); text-transform: uppercase; }
+.goods-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1000px) { .goods-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .goods-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.g { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.g-stage { position: relative; aspect-ratio: 4 / 5; max-width: 100%; border-radius: 14px; overflow: hidden; display: grid; place-items: center; background: radial-gradient(120% 90% at 50% 20%, rgba(243,241,236,.10), rgba(243,241,236,.02) 70%); outline: 1px solid var(--line); outline-offset: -1px; }
+.g figcaption { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.g figcaption b { font-weight: 500; }
+.g figcaption span { color: var(--dim); font-size: 12px; }
+.keys { display: flex; align-items: flex-end; justify-content: center; gap: 2%; padding: 14% 6% 10%; }
+.key { position: relative; width: 18%; display: flex; flex-direction: column; align-items: center; transition: transform .5s cubic-bezier(.2,.8,.2,1); transform-origin: 50% 0; }
+.key img { width: 100%; filter: drop-shadow(2px 0 0 rgba(255,255,255,.75)) drop-shadow(-2px 0 0 rgba(255,255,255,.75)) drop-shadow(0 2px 0 rgba(255,255,255,.75)) drop-shadow(0 -2px 0 rgba(255,255,255,.75)) drop-shadow(0 10px 12px rgba(0,0,0,.5)); }
+.key .ring { width: 16px; height: 16px; border-radius: 99px; border: 2px solid #c9ccd4; margin-bottom: 2px; box-shadow: 0 0 6px rgba(255,255,255,.3); }
+.key.on { transform: translateY(-6%) scale(1.14); }
+.stickers { padding: 12% 8%; display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 8% 6%; }
+.sticker { width: 38%; transform: rotate(var(--r)); filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(0 6px 8px rgba(0,0,0,.45)); transition: transform .4s ease; }
+.sticker.on { transform: rotate(0deg) scale(1.12); }
+.cal { position: relative; width: 82%; background: #f3f1ec; border-radius: 6px; padding: 10px 8px 0; box-shadow: 0 18px 30px -10px rgba(0,0,0,.6); transform: perspective(600px) rotateX(8deg); }
+.cal img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 3px; }
+.cal-rings { position: absolute; top: -6px; left: 10%; right: 10%; height: 12px; background: repeating-linear-gradient(90deg, #8c909a 0 3px, transparent 3px 11px); }
+.cal-band { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 4px 10px; color: #16171c; }
+.cal-band b { font-family: var(--display); font-style: italic; font-size: 22px; font-weight: 500; }
+.cal-band span { font-family: var(--mono); font-size: 8px; letter-spacing: .2em; }
+.pods { position: relative; width: 62%; aspect-ratio: 1 / 1.08; border-radius: 26% / 24%; overflow: hidden; box-shadow: inset 0 0 0 3px rgba(255,255,255,.35), 0 18px 30px -8px rgba(0,0,0,.6); }
+.pods img { width: 100%; height: 100%; object-fit: cover; }
+.pods .hinge { position: absolute; left: 0; right: 0; top: 30%; height: 2px; background: rgba(0,0,0,.35); }
+.phones { display: flex; justify-content: center; align-items: center; gap: 8%; }
+.phone { position: relative; width: 36%; aspect-ratio: 9 / 19; border-radius: 18% / 8.5%; overflow: hidden; background: #1c2a5e; box-shadow: inset 0 0 0 3px rgba(255,255,255,.25), 0 16px 26px -8px rgba(0,0,0,.6); transition: transform .5s ease; }
+.phone img { position: absolute; inset: 6% 0 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; }
+.phone .cam { position: absolute; top: 4%; left: 8%; width: 36%; aspect-ratio: 1; border-radius: 26%; background: rgba(10,12,18,.85); box-shadow: inset 0 0 0 2px rgba(255,255,255,.2); }
+.phone.on { transform: translateY(-4%) scale(1.06); }
+@media (prefers-reduced-motion: reduce) { .lr-title::before, .lr-title::after { animation: none; display: none; } .key, .sticker, .phone { transition: none; } }
+
+/* intro: subway doors → night city → audition story */
+.intro { position: relative; z-index: 2; height: 100svh; min-height: 520px; overflow: hidden; background: #040509; touch-action: none; }
+.intro.done { touch-action: auto; }
+.intro-media { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; transform-origin: 50% 60%; will-change: transform, filter; }
+.intro-shade { position: absolute; inset: 0; background: radial-gradient(120% 80% at 50% 45%, transparent 30%, rgba(4,5,9,.75) 100%), linear-gradient(180deg, rgba(4,5,9,.5), transparent 30%, transparent 65%, rgba(4,5,9,.9)); }
+.intro-lines { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding-inline: max(20px, env(safe-area-inset-left, 0px)); pointer-events: none; }
+.intro-line, .intro-title { grid-area: 1 / 1; opacity: 0; }
+.intro-line { margin: 0; font-family: var(--display); font-style: italic; font-size: clamp(26px, 4.4vw, 54px); line-height: 1.25; color: #fff; text-shadow: 0 4px 30px rgba(0,0,0,.6); text-wrap: balance; max-width: 18ch; }
+.intro-title h1 { margin: 0; font-family: var(--display); font-style: italic; font-weight: 400; font-size: clamp(44px, 8vw, 112px); line-height: .95; color: #fff; text-shadow: 0 6px 40px rgba(0,0,0,.6); }
+.intro-title p { margin: 18px 0 0; font-size: 15px; letter-spacing: .5em; color: rgba(255,255,255,.85); }
+.tdoor { position: absolute; top: 0; bottom: 0; width: 50%; z-index: 3; overflow: hidden; will-change: transform; }
+.tdoor.l { left: 0; } .tdoor.r { right: 0; }
+.tdoor .tw { position: absolute; top: 18%; height: 42%; width: 46%; border-radius: 22px; box-shadow: 0 0 0 2000px #c9cdd6, inset 0 0 0 6px #2a2e38, inset 0 0 40px rgba(0,0,0,.6); }
+.tdoor.l .tw { right: 14%; } .tdoor.r .tw { left: 14%; }
+.tdoor::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, rgba(0,0,0,.25), rgba(255,255,255,.18) 40%, rgba(0,0,0,.2)), linear-gradient(180deg, transparent 72%, rgba(0,0,0,.35) 72.5%, transparent 74%); }
+.tdoor .edge { position: absolute; top: 0; bottom: 0; width: 14px; background: #1b1d24; z-index: 2; }
+.tdoor.l .edge { right: 0; } .tdoor.r .edge { left: 0; }
+.tdoor.l::after, .tdoor.r::after { content: ""; position: absolute; bottom: 9%; width: 30%; height: 7px; border-radius: 4px; background: #ffd400; z-index: 2; }
+.tdoor.l::after { right: 22%; } .tdoor.r::after { left: 22%; }
+.led { position: absolute; z-index: 4; top: calc(4% + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); width: min(560px, 86vw); height: 40px; border-radius: 6px; background: #0b0b0c; box-shadow: inset 0 0 0 2px #2a2a2e, 0 6px 20px rgba(0,0,0,.6); overflow: hidden; display: flex; align-items: center; }
+.led-track { display: flex; white-space: nowrap; animation: led 16s linear infinite; font-family: var(--mono); font-size: 15px; letter-spacing: .06em; color: #ff8a2a; text-shadow: 0 0 6px rgba(255,138,42,.8); }
+.led-track b { color: #ffd34d; font-weight: 500; }
+@keyframes led { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.route { position: absolute; z-index: 4; left: 50%; bottom: calc(15% + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; gap: clamp(14px, 4vw, 40px); margin: 0; padding: 10px 18px; list-style: none; border-radius: 999px; background: rgba(8,9,14,.6); backdrop-filter: blur(6px); font-size: 12px; color: rgba(255,255,255,.7); white-space: nowrap; }
+.route li { display: flex; align-items: center; gap: 6px; }
+.route i { width: 9px; height: 9px; border-radius: 99px; border: 2px solid #6ad1c0; }
+.route li.here { color: #fff; } .route li.here i { background: #6ad1c0; box-shadow: 0 0 0 4px rgba(106,209,192,.25); }
+.intro-hint { position: absolute; z-index: 5; left: 50%; bottom: calc(5% + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: .3em; color: rgba(255,255,255,.85); }
+.intro-skip { position: absolute; z-index: 5; top: calc(14px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); font: inherit; font-size: 13px; cursor: pointer; }
+.intro-bar { position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255,255,255,.12); }
+.intro-bar div { height: 100%; background: #6ad1c0; transform: scaleX(0); transform-origin: left; }
+@media (max-width: 560px) { .route { font-size: 11px; padding: 8px 12px; gap: 12px; } .tdoor .tw { width: 56%; } }
+@media (prefers-reduced-motion: reduce) {
+  .tdoor { display: none; } .intro-line { opacity: 0 !important; } .intro-title { opacity: 1 !important; } .led-track { animation: none; }
+}
+
+/* stage intro */
+.st { background: #05060b; }
+.st-stage { position: absolute; inset: 0; transform-origin: 50% 70%; will-change: transform; }
+.st-wall { position: absolute; inset: 0 0 34% 0; background:
+  radial-gradient(60% 80% at 50% 100%, rgba(150,140,255,.22), transparent 70%),
+  repeating-linear-gradient(90deg, rgba(160,170,255,.07) 0 2px, transparent 2px 64px),
+  repeating-linear-gradient(0deg, rgba(160,170,255,.05) 0 2px, transparent 2px 64px),
+  linear-gradient(180deg, #06070e, #0d0f22); }
+.st-haze { position: absolute; inset: 20% -10% 25%; background: radial-gradient(40% 50% at 30% 60%, rgba(170,165,236,.18), transparent 70%), radial-gradient(35% 45% at 72% 55%, rgba(178,198,234,.14), transparent 70%); filter: blur(30px); animation: haze 14s ease-in-out infinite alternate; }
+@keyframes haze { to { transform: translateX(4%) translateY(-2%); } }
+.st-beam { position: absolute; top: -10%; width: 22%; height: 95%; margin-left: -11%; transform-origin: 50% 0; opacity: 0; mix-blend-mode: screen; background: linear-gradient(180deg, rgba(220,225,255,.55), rgba(170,165,236,.08) 75%, transparent); clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); filter: blur(2px); }
+.st-floor { position: absolute; left: -20%; right: -20%; bottom: 0; height: 36%; transform: perspective(500px) rotateX(58deg); transform-origin: 50% 0; background:
+  repeating-linear-gradient(90deg, rgba(170,165,236,.18) 0 1px, transparent 1px 80px),
+  repeating-linear-gradient(0deg, rgba(170,165,236,.14) 0 1px, transparent 1px 60px),
+  linear-gradient(180deg, #121428, #05060b); }
+.st-mics { position: absolute; left: 6%; right: 6%; bottom: 14%; height: 30%; }
+.st-mic { position: absolute; bottom: 0; width: 40px; margin-left: -20px; height: 100%; display: flex; align-items: flex-end; justify-content: center; color: color-mix(in srgb, #1a1c28, #e9ecff calc(var(--on) * 100%)); }
+.st-mic svg { position: relative; height: 72%; width: auto; filter: drop-shadow(0 0 calc(var(--on) * 14px) rgba(230,235,255,.8)); }
+.st-mic .pool { position: absolute; bottom: -8%; left: 50%; width: 220%; height: 26%; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, rgba(235,238,255,.85), rgba(170,165,236,.25) 55%, transparent); opacity: var(--on); filter: blur(4px); }
+.st-mic.hidden-one { color: #0d0e14; }
+.st-mic.hidden-one::after { content: "?"; position: absolute; bottom: 78%; font-family: var(--display); font-style: italic; font-size: 22px; color: rgba(255,181,71,.6); }
+.st-curtain { position: absolute; top: 0; bottom: 0; width: 51%; z-index: 4; will-change: transform; background:
+  linear-gradient(180deg, rgba(0,0,0,.35), transparent 20%, transparent 80%, rgba(0,0,0,.5)),
+  repeating-linear-gradient(90deg, #1a0710 0, #4a1022 22px, #6e1830 34px, #3a0c1a 52px, #1a0710 70px); box-shadow: inset 0 0 80px rgba(0,0,0,.6); }
+.st-curtain.l { left: 0; transform-origin: 0 50%; } .st-curtain.r { right: 0; transform-origin: 100% 50%; }
+.st-valance { position: absolute; z-index: 5; top: 0; left: 0; right: 0; height: 9%; background: repeating-linear-gradient(90deg, #2a0914 0, #5a1428 30px, #2a0914 60px); border-bottom: 2px solid #8a6a2a; box-shadow: 0 8px 24px rgba(0,0,0,.6); border-radius: 0 0 50% 50% / 0 0 30% 30%; }
+.st-air { position: absolute; z-index: 6; top: calc(12% + env(safe-area-inset-top, 0px)); left: max(20px, env(safe-area-inset-left, 0px)); display: flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid rgba(255,255,255,.25); border-radius: 6px; font-family: var(--mono); font-size: 12px; letter-spacing: .2em; color: rgba(255,255,255,.45); transition: color .4s, border-color .4s, box-shadow .4s; }
+.st-air i { width: 8px; height: 8px; border-radius: 99px; background: #3a3a40; transition: background .4s, box-shadow .4s; }
+.st-air.on { color: #fff; border-color: #ff3b4f; box-shadow: 0 0 18px rgba(255,59,79,.4); }
+.st-air.on i { background: #ff3b4f; box-shadow: 0 0 10px #ff3b4f; }
+.st .intro-line, .st .intro-title { position: relative; z-index: 3; }
+.st .intro-title p { letter-spacing: .4em; font-family: var(--mono); font-size: 13px; }
+.st.lit .st-curtain { display: none; } .st.lit .st-mic { --on: 1 !important; } .st.lit .intro-title { opacity: 1 !important; }
+@media (max-width: 560px) { .st-mic svg { height: 56%; } .st-beam { width: 34%; margin-left: -17%; } }
+@media (prefers-reduced-motion: reduce) { .st-haze { animation: none; } }
+
+/* VS intro */
+.sv-doorwrap { position: absolute; inset: 0; will-change: transform, opacity; }
+.sv-doorbg { position: absolute; inset: 0; overflow: hidden; background: #050508; pointer-events: none; clip-path: path('M0 0Z'); }
+.sv-eyes { position: absolute; max-width: none; transform-origin: 50% 60%; -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%); }
+.sv-walk { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 50% 30%; }
+.sv-doorbg.plan-a .sv-walk, .sv-doorbg.plan-b .sv-eyes { display: none; }
+.plan-switch { position: absolute; z-index: 6; top: calc(14px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(10,11,16,.55); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.2); }
+.plan-switch button { font: inherit; font-size: 13px; min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: rgba(255,255,255,.75); cursor: pointer; }
+.plan-switch button[aria-pressed="true"] { background: #fff; color: #0b0c10; font-weight: 600; }
+.plan-switch button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-width: 560px) { .plan-switch button { font-size: 11px; padding: 0 10px; } }
+.sv-doors { transform-origin: 50% 52%; }
+.sv-mono { --r: -14%; position: absolute; inset: 0; pointer-events: none;
+  -webkit-backdrop-filter: grayscale(1) contrast(1.08) brightness(.92); backdrop-filter: grayscale(1) contrast(1.08) brightness(.92);
+  -webkit-mask-image: radial-gradient(closest-side at 50% 50%, transparent var(--r), #000 calc(var(--r) + 14%)); mask-image: radial-gradient(closest-side at 50% 50%, transparent var(--r), #000 calc(var(--r) + 14%)); }
+.sv-white { position: absolute; inset: -20%; opacity: 0; pointer-events: none; transform-origin: 50% 52%; background: radial-gradient(45% 50% at 50% 52%, #fff 0%, #f4f2ff 45%, rgba(214,210,255,.85) 75%, rgba(200,196,242,.6) 100%); }
+
+.sv { background: #04050a; }
+.sv-img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; will-change: transform, opacity; }
+.sv-group { opacity: 0; }
+.sv-awake { opacity: 0; }
+.sv-vs { position: absolute; inset: 0; opacity: 0; overflow: hidden; }
+.sv-half { position: absolute; inset: 0; background: #04050a url(intro/vs.jpg) center / cover no-repeat; will-change: transform; }
+.sv-half.l { clip-path: polygon(0 0, 54% 0, 46% 100%, 0 100%); }
+.sv-half.r { clip-path: polygon(54% 0, 100% 0, 100% 100%, 46% 100%); }
+.sv-seam { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; filter: drop-shadow(0 0 8px #fff) drop-shadow(0 0 18px #aaa5ec); }
+.sv-seam line { stroke: #fff; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.sv-mark { position: absolute; left: 50%; top: 30%; font-family: var(--display); font-style: italic; font-size: clamp(64px, 11vw, 150px); color: #fff; letter-spacing: -.02em; text-shadow: 0 0 30px rgba(170,165,236,.8), 0 0 60px rgba(196,86,106,.5); opacity: 0; pointer-events: none; }
+.sv-shade { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(130% 90% at 50% 45%, transparent 45%, rgba(4,5,10,.7) 100%), linear-gradient(180deg, rgba(4,5,10,.35), transparent 25%, transparent 60%, rgba(4,5,10,.8)); }
+.sv .intro-lines { z-index: 3; align-items: end; padding-bottom: 16vh; }
+.sv .intro-line { font-size: clamp(24px, 3.6vw, 44px); max-width: 24ch; }
+.sv .intro-title { align-self: center; }
+.sv .intro-title p { letter-spacing: .4em; font-family: var(--mono); font-size: 13px; }
+.sv.rest .sv-img:not(.sv-group), .sv.rest .sv-awake, .sv.rest .sv-mono, .sv.rest .sv-white, .sv.rest .sv-doorwrap { display: none; } .sv.rest .sv-group { opacity: 1; filter: brightness(.6); } .sv.rest .intro-title { opacity: 1 !important; }
+
+/* modals: PV player, goods deck */
+.modal { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; background: rgba(4,5,9,.82); backdrop-filter: blur(10px); padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); animation: filmIn .3s ease both; }
+.modal-box { width: min(1100px, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.modal-bar { display: flex; align-items: center; gap: 12px; color: var(--paper); font-size: 14px; }
+.modal-bar > span:first-child { flex: 1; min-width: 0; }
+.modal-bar b { font-weight: 600; }
+.modal-x { width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--paper); font: inherit; font-size: 16px; cursor: pointer; }
+.modal-x:hover { background: rgba(255,255,255,.14); }
+.modal-x:focus-visible, .deck-nav:focus-visible, .deck-thumbs button:focus-visible, .deck-open:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.pv video { width: 100%; max-height: calc(100svh - 120px); border-radius: 14px; background: #000; }
+.deck-count { font-family: var(--mono); font-size: 12px; color: var(--dim); letter-spacing: .1em; }
+.deck-stage { position: relative; border-radius: 12px; overflow: hidden; background: #fff; }
+.deck-stage img { display: block; width: 100%; max-height: calc(100svh - 220px); object-fit: contain; background: #fff; }
+.deck-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; border-radius: 999px; border: 0; background: rgba(12,13,18,.7); color: #fff; font-size: 28px; line-height: 1; cursor: pointer; }
+.deck-nav.prev { left: 10px; } .deck-nav.next { right: 10px; }
+.deck-nav:disabled { opacity: .25; cursor: default; }
+.deck-thumbs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.deck-thumbs button { flex: 0 0 auto; width: 88px; padding: 0; border: 2px solid transparent; border-radius: 6px; overflow: hidden; background: none; cursor: pointer; opacity: .6; }
+.deck-thumbs button[aria-pressed="true"] { border-color: #fff; opacity: 1; }
+.deck-thumbs img { display: block; width: 100%; }
+.deck-open { font: inherit; font-size: 13px; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--paper); cursor: pointer; }
+.deck-open:hover { background: rgba(255,255,255,.14); }
+.foot { align-items: center; }
+
+/* OriginButton — dark palette from the component's theme tokens */
+.ob { --ob-bg: #171716; --ob-fg: #f6f3ec; --ob-border: #2b2a25; --ob-fill: #fafafa; --ob-on: #0a0a0a;
+  position: relative; display: inline-flex; align-items: center; justify-content: center; height: 48px; padding: 0 26px; overflow: hidden;
+  border-radius: 12px; border: .5px solid var(--ob-border); background: var(--ob-bg); color: var(--ob-fg);
+  font: 500 15px/1 var(--body); letter-spacing: -.02em; text-decoration: none; cursor: pointer; user-select: none; touch-action: manipulation;
+  transition: color .3s cubic-bezier(.16,1,.3,1), transform .15s ease; -webkit-tap-highlight-color: transparent; }
+.ob.on { color: var(--ob-on); }
+.ob:active { transform: scale(.985); }
+.ob:focus-visible { outline: none; box-shadow: 0 0 0 2px #0b0c10, 0 0 0 4px rgba(246,243,236,.5); }
+.ob[disabled] { pointer-events: none; opacity: .5; }
+.ob-fill { position: absolute; border-radius: 999px; background: var(--ob-fill); pointer-events: none; transition: transform .5s cubic-bezier(.16,1,.3,1); }
+.ob-label { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+.ob-sm { height: 40px; padding: 0 18px; font-size: 13px; border-radius: 10px; }
+.ob-amber { --ob-bg: #ffb547; --ob-fg: #14110b; --ob-border: #ffb547; --ob-fill: #14110b; --ob-on: #ffb547; font-weight: 600; }
+.ob .dot { flex: none; }
+@media (max-width: 560px) { .ob { height: 44px; padding: 0 16px; font-size: 14px; } }
+@media (prefers-reduced-motion: reduce) { .ob-fill { transition: none; } .ob:active { transform: none; } }
+
+/* BackButton — shadcn default button (primary bg) with a sweeping arrow panel */
+.bb { position: relative; display: inline-flex; align-items: center; justify-content: center; height: 40px; min-width: 132px; padding: 0 18px 0 52px; overflow: hidden;
+  border: 0; border-radius: 6px; background: #f6f3ec; color: #111111; font: 500 14px/1 var(--body); white-space: nowrap; cursor: pointer; transition: background .2s ease; }
+.bb:hover { background: rgba(246,243,236,.9); }
+.bb:focus-visible { outline: none; box-shadow: 0 0 0 2px #0b0c10, 0 0 0 4px rgba(246,243,236,.6); }
+.bb-label { transition: opacity .5s ease; }
+.bb-arrow { position: absolute; inset: 0 auto 0 0; z-index: 1; width: 25%; display: grid; place-items: center; background: rgba(17,17,17,.15); transition: width .5s ease; font-style: normal; }
+.bb-arrow svg { opacity: .6; }
+.bb:hover .bb-label, .bb:focus-visible .bb-label { opacity: 0; }
+.bb:hover .bb-arrow, .bb:focus-visible .bb-arrow { width: 100%; }
+.bb-lg { height: 48px; font-size: 15px; padding: 0 22px 0 62px; }
+.bb-lg .bb-arrow { width: 46px; }
+.bb .bb-arrow { min-width: 40px; }
+@media (prefers-reduced-motion: reduce) { .bb-label, .bb-arrow { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .swap, .film { animation: none; }
+  .backdrop img, .roster img { transition: none; }
+}
+</style>
+<style type="text/tailwindcss">
+@custom-variant dark (&:where(.dark, .dark *));
+@theme inline {
+  --color-background: var(--background); --color-foreground: var(--foreground);
+  --color-card: var(--card); --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border); --color-ring: var(--ring); --color-chart-1: var(--accent);
+  --font-mono: var(--mono);
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.8/dist/index.global.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+/* ───────────── Trainees: floor = 참가번호. Copy lines are draft examples. ───────────── */
+const MEMBERS = [
+  { id: "wooju", floor: 1, ko: "한우주", en: "Han Woo-ju", room: "그림자의 방", accent: "#aaa5ec", chat: 36,
+    line: "얼굴을 지운 자리에, 내 목소리만 남았어.", end: "이제, 진짜 내 목소리를 들려줄게." },
+  { id: "jiwon", floor: 2, ko: "최지원", en: "Choi Ji-won", room: "민트 스튜디오", accent: "#63e3cc", chat: 35,
+    line: "가면 너머로 가장 먼저 닿는 건, 결국 목소리니까.", end: "내 진심, 끝까지 들어줄래?" },
+  { id: "inwoo", floor: 3, ko: "박인우", en: "Park In-woo", room: "단 하나의 조명", accent: "#b2c6ea", chat: 33,
+    line: "조명 하나, 마이크 하나. 증명하기엔 충분해.", end: "다음 무대, 맨 앞에서 지켜봐 줘." },
+  { id: "suho", floor: 4, ko: "이수호", en: "Lee Su-ho", room: "펼쳐진 페이지", accent: "#b5cf8f", chat: 34,
+    line: "아직 아무도 읽지 않은 이야기가, 여기 있어.", end: "이 이야기의 다음 장, 같이 넘길래?" },
+  { id: "minjae", floor: 5, ko: "강민재", en: "Kang Min-jae", room: "레드 스포트라이트", accent: "#ff6152", chat: 32,
+    line: "떨리냐고? 이 순간이 제일 재밌는데.", end: "데뷔 무대에서 만나. 약속." },
+  { id: "locked", floor: 6, ko: "비공개 연습생", en: "Unknown", room: "접근 제한", accent: "#ffb547", locked: true,
+    line: "아직 이름을 부를 수 없는 목소리가, 이 층에 있다.", end: "" },
+].map((m) => ({ ...m, chatUrl: m.chat ? `https://vivtalk.shop/?gid=vchat&id=${m.chat}` : "https://vivtalk.shop/", src: `img/${m.id}.jpg`, video: m.locked ? null : `vid/${m.id}.mp4`, title: m.ko,
+  caption: m.locked ? "ACCESS RESTRICTED · 공개 전" : `${m.room} · ${m.en}`, alt: m.locked ? "실루엣만 보이는 비공개 연습생" : `${m.ko} — ${m.room}` }));
+const CHAT_URL = "https://vivtalk.shop/";
+const LIVE_URL = "https://www.youtube.com/@RoyalUniverseKR";
+const SLIDES = Array.from({ length: 9 }, (_, i) => `slides/s-${i + 1}.jpg`);
+
+/* ───────────── BackButton (provided component): an arrow panel that sweeps across on hover ───────────── */
+const BackButton = React.forwardRef(function BackButton({ children = "Back", className = "", ...props }, ref) {
+  return (
+    <button ref={ref} type="button" {...props} className={`bb group ${className}`}>
+      <span className="bb-label">{children}</span>
+      <i className="bb-arrow" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></svg>
+      </i>
+    </button>
+  );
+});
+
+/* ───────────── ElevatorDoorsGallery (provided component, ported to plain JSX) ───────────── */
+const DEFAULT_LABELS = { chooseFloor: "Choose a floor", floor: "Floor", stepInside: "Step inside", backToElevator: "Back to the elevator", returnHint: "Click anywhere to return", arrived: "Arrived at", imageUnavailable: "Image unavailable", empty: "No floors to explore" };
+const CLOSE_MS = 420, OPEN_MS = 520, TRAVEL_MS = 1200;
+const EASING = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+const OPEN_POSITION = 94;
+function clampFloor(index, total) { return Math.max(0, Math.min(total - 1, Number.isFinite(index) ? Math.trunc(index) : 0)); }
+function floorLabel(item, index) { return String(item?.floor ?? index + 1); }
+function displayLabel(label) { return /^\d$/.test(label) ? label.padStart(2, "0") : label; }
+function arrivalLabel(item, index, arrived) {
+  const label = floorLabel(item, index);
+  return `${arrived} ${Number.isFinite(Number(label)) ? `${label}F` : label}${item?.title ? ` · ${item.title}` : ""}`;
+}
+
+function ElevatorDoorsGallery({ items, defaultFloor = 0, floor, onFloorChange, inside, onInsideChange, onStepInside, autoplay = false, interval = 3200, initialDelay, labels, className, ...rest }) {
+  const text = { ...DEFAULT_LABELS, ...labels };
+  const total = items.length;
+  const [localFloor, setLocalFloor] = React.useState(() => clampFloor(defaultFloor, total));
+  const selected = clampFloor(floor ?? localFloor, total);
+  const [reducedMotion, setReducedMotion] = React.useState(false);
+  const [userStopped, setUserStopped] = React.useState(false);
+  const [visual, setVisual] = React.useState(() => ({ index: selected, label: floorLabel(items[selected], selected), phase: "idle", direction: 0, arrived: false }));
+  const [announcement, setAnnouncement] = React.useState("");
+  const [failedSrc, setFailedSrc] = React.useState("");
+  const [loadedSrc, setLoadedSrc] = React.useState("");
+  const [localInside, setLocalInside] = React.useState(false);
+  const requestedInside = inside ?? localInside;
+  const [scene, setScene] = React.useState(null);
+  const [flight, setFlight] = React.useState("entering");
+  const sourceView = React.useRef(null);
+  const stepButton = React.useRef(null);
+  const lookRef = React.useRef(null);
+  const maskRef = React.useRef(null);
+  const vistaRef = React.useRef(null);
+  const captionRef = React.useRef(null);
+  const flightAnimations = React.useRef([]);
+  const entered = React.useRef(false);
+  const closing = React.useRef(false);
+  const returnRequested = React.useRef(false);
+  const focusAfterReturn = React.useRef(false);
+  const finishReturn = React.useRef(null);
+  const shownRef = React.useRef(selected);
+  const doors = React.useRef([]);
+  const travelLight = React.useRef(null);
+  const buttons = React.useRef([]);
+  const panelRef = React.useRef(null);
+  const [widePanel, setWidePanel] = React.useState(false);
+  const panelFocus = React.useRef(null);
+  const command = React.useRef(null);
+  const openAfterCommit = React.useRef(null);
+  const everOpened = React.useRef(false);
+  const latest = React.useRef(null);
+  latest.current = { items, selected, floor, onFloorChange, onStepInside, insideVisible: scene !== null, arrived: text.arrived };
+
+  React.useLayoutEffect(() => {
+    const container = panelRef.current?.closest('[data-slot="elevator-doors-gallery"]');
+    if (!container) return;
+    const update = (width) => {
+      const active = document.activeElement;
+      panelFocus.current = active && panelRef.current?.contains(active) && active.dataset.floorButton !== undefined ? Number(active.dataset.floorButton) : null;
+      setWidePanel(width >= 480);
+    };
+    const style = getComputedStyle(container);
+    update(container.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight));
+    const observer = new ResizeObserver((entries) => { const entry = entries[0]; if (entry) update(entry.contentRect.width); });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (panelFocus.current !== null) buttons.current[panelFocus.current]?.focus({ preventScroll: true });
+    panelFocus.current = null;
+  }, [widePanel]);
+
+  React.useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReducedMotion(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  React.useEffect(() => { for (const item of items) { const image = new Image(); image.src = item.src; } }, [items]);
+
+  React.useEffect(() => {
+    let shown = clampFloor(shownRef.current, total);
+    let target = shown;
+    let phase = "idle";
+    let phaseStart = 0, lastStep = 0, frame = 0, direction = 0;
+    let animations = [];
+    const values = latest.current.items.map((item, index) => Number(item.floor ?? index + 1));
+    const numeric = values.every(Number.isSafeInteger) && new Set(values).size === total;
+    const level = (index) => numeric ? (values[index] ?? 1) : index;
+    let indicated = level(shown);
+
+    const publish = (arrived = false) => {
+      shownRef.current = shown;
+      setVisual({ index: shown, label: numeric ? String(indicated) : floorLabel(latest.current.items[indicated], indicated), phase, direction, arrived });
+    };
+    const setDoors = (open, duration) => {
+      const starts = doors.current.map((door) => door ? getComputedStyle(door).transform : "none");
+      animations.forEach((a) => a.cancel());
+      animations = [];
+      doors.current.forEach((door, index) => {
+        if (!door) return;
+        const transform = `translateX(${open ? (index === 0 ? -OPEN_POSITION : OPEN_POSITION) : 0}%)`;
+        door.style.transform = transform;
+        if (duration > 0) animations.push(door.animate([{ transform: starts[index] }, { transform }], { duration, easing: EASING }));
+      });
+    };
+    const close = (now) => {
+      openAfterCommit.current = null;
+      phase = "closing"; phaseStart = now;
+      direction = Math.sign(level(target) - indicated);
+      setDoors(false, CLOSE_MS);
+      publish();
+    };
+    const tick = (now) => {
+      frame = 0;
+      if (phase === "closing" && now - phaseStart >= CLOSE_MS) { phase = "travelling"; phaseStart = now; lastStep = now; publish(); }
+      if (phase === "travelling") {
+        const destination = level(target);
+        const distance = Math.abs(destination - indicated);
+        direction = Math.sign(destination - indicated);
+        const remaining = Math.max(0, TRAVEL_MS - (now - phaseStart));
+        const stepMs = Math.min(140, remaining / Math.max(1, distance));
+        if (distance > 0 && now - lastStep >= stepMs) {
+          // Large gaps (e.g. 1592 → 2026) roll through the numbers instead of jumping at the end.
+          const jump = Math.max(1, Math.ceil(distance / Math.max(1, remaining / 16)));
+          indicated += direction * jump;
+          if (direction > 0 ? indicated > destination : indicated < destination) indicated = destination;
+          lastStep = now;
+          if (remaining === 0) indicated = destination;
+          publish();
+        }
+        if (indicated === destination) {
+          shown = target; phase = "opening"; phaseStart = Infinity;
+          openAfterCommit.current = () => { phaseStart = performance.now(); everOpened.current = true; setDoors(true, OPEN_MS); };
+          publish(true);
+          setAnnouncement(arrivalLabel(latest.current.items[shown], shown, latest.current.arrived));
+        }
+      }
+      if (phase === "opening" && now - phaseStart >= OPEN_MS) { phase = "idle"; direction = 0; publish(); }
+      if (phase !== "idle") frame = requestAnimationFrame(tick);
+    };
+
+    const prefersReduced = reducedMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!everOpened.current && !prefersReduced && total > 0) {
+      setDoors(false, 0);
+      phase = "opening"; phaseStart = Infinity;
+      openAfterCommit.current = () => { phaseStart = performance.now(); everOpened.current = true; setDoors(true, OPEN_MS); };
+      frame = requestAnimationFrame(tick);
+    } else { everOpened.current = true; setDoors(true, 0); }
+    publish();
+    command.current = (index) => {
+      if (latest.current.insideVisible) return;
+      target = index;
+      if (reducedMotion) {
+        cancelAnimationFrame(frame); frame = 0;
+        shown = target; indicated = level(target); phase = "idle"; direction = 0;
+        setDoors(true, 0); publish();
+        if (total > 0) setAnnouncement(arrivalLabel(latest.current.items[shown], shown, latest.current.arrived));
+        return;
+      }
+      if (phase === "idle" && shown === target) return;
+      if (phase === "idle" || (phase === "opening" && shown !== target)) close(performance.now());
+      if (!frame) frame = requestAnimationFrame(tick);
+    };
+    command.current(latest.current.selected);
+    return () => { cancelAnimationFrame(frame); animations.forEach((a) => a.cancel()); command.current = null; openAfterCommit.current = null; };
+  }, [total, reducedMotion]);
+
+  const arrivingSrc = items[clampFloor(visual.index, total)]?.src;
+  React.useLayoutEffect(() => {
+    if (visual.phase !== "opening" || !openAfterCommit.current) return;
+    const open = () => { const run = openAfterCommit.current; openAfterCommit.current = null; run?.(); };
+    if (!arrivingSrc || loadedSrc === arrivingSrc || failedSrc === arrivingSrc) { open(); return; }
+    const timer = window.setTimeout(open, 1200);
+    return () => window.clearTimeout(timer);
+  }, [visual.phase, visual.index, arrivingSrc, loadedSrc, failedSrc]);
+
+  React.useLayoutEffect(() => {
+    if (everOpened.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    doors.current.forEach((door) => { if (door) door.style.transform = "translateX(0%)"; });
+  }, []);
+
+  React.useEffect(() => { if (!scene) command.current?.(selected); }, [selected, total, reducedMotion, scene]);
+
+  React.useEffect(() => {
+    const light = travelLight.current;
+    if (!light || visual.phase !== "travelling" || reducedMotion) return;
+    const distance = light.parentElement?.clientHeight ?? 300;
+    const down = visual.direction < 0;
+    const animation = light.animate([{ transform: `translateY(${down ? 0 : distance}px)` }, { transform: `translateY(${down ? distance : 0}px)` }], { duration: 650, iterations: Infinity });
+    return () => animation.cancel();
+  }, [visual.phase, visual.direction, reducedMotion]);
+
+  const selectFloor = React.useCallback((index, user = true) => {
+    if (user) setUserStopped(true);
+    const current = latest.current;
+    if (current.items.length === 0 || current.insideVisible) return;
+    const next = clampFloor(index, current.items.length);
+    if (next === current.selected) return;
+    if (current.floor === undefined) setLocalFloor(next);
+    current.onFloorChange?.(next);
+  }, []);
+
+  React.useEffect(() => {
+    if (!autoplay || userStopped || reducedMotion || total < 2 || requestedInside || scene) return;
+    const every = Number.isFinite(interval) ? Math.max(2300, interval) : 3200;
+    const first = initialDelay === undefined || !Number.isFinite(initialDelay) ? every : Math.max(0, initialDelay);
+    let timer = window.setTimeout(function advance() { selectFloor((latest.current.selected + 1) % total, false); timer = window.setTimeout(advance, every); }, first);
+    return () => window.clearTimeout(timer);
+  }, [autoplay, userStopped, reducedMotion, total, interval, initialDelay, selectFloor, requestedInside, scene]);
+
+  const item = items[clampFloor(visual.index, total)];
+  const busy = visual.phase !== "idle";
+  const playing = autoplay && !userStopped && !reducedMotion && total > 1 && !requestedInside && !scene;
+  const displayedLabel = displayLabel(visual.label);
+  const ascendingFloors = items.map((_, index) => index);
+  if (items.every((entry, index) => Number.isFinite(Number(floorLabel(entry, index))))) {
+    ascendingFloors.sort((a, b) => Number(floorLabel(items[a], a)) - Number(floorLabel(items[b], b)));
+  }
+  const rows = widePanel ? Array.from({ length: Math.ceil(total / 2) }, (_, row) => ascendingFloors.slice(row * 2, row * 2 + 2)).reverse() : [ascendingFloors];
+  const panelButtons = rows.flatMap((row, rowIndex) => row.map((index, column) => ({ index, row: rowIndex + 1, column: column + 1 })));
+
+  const cancelFlight = React.useCallback(() => { flightAnimations.current.forEach((a) => { a.onfinish = null; a.cancel(); }); flightAnimations.current = []; }, []);
+
+  const windowCrop = React.useCallback(() => {
+    const source = sourceView.current;
+    const opening = stepButton.current?.getBoundingClientRect();
+    const stage = lookRef.current?.getBoundingClientRect();
+    if (!source || !opening || !stage || !opening.width || !stage.width) return null;
+    const image = source.getBoundingClientRect();
+    const naturalWidth = source.naturalWidth || image.width;
+    const naturalHeight = source.naturalHeight || image.height;
+    const smallCover = Math.max(image.width / naturalWidth, image.height / naturalHeight);
+    const fullCover = Math.max(stage.width / naturalWidth, stage.height / naturalHeight);
+    const scale = smallCover / fullCover;
+    const x = opening.left - stage.left + opening.width / 2;
+    const y = opening.top - stage.top + opening.height / 2;
+    const tx = image.left - stage.left + image.width / 2 - (x + (stage.width / 2 - x) * scale);
+    const ty = image.top - stage.top + image.height / 2 - (y + (stage.height / 2 - y) * scale);
+    const radius = lookRef.current?.parentElement ? getComputedStyle(lookRef.current.parentElement).borderRadius : "28px";
+    return {
+      clip: `inset(${opening.top - stage.top}px ${stage.right - opening.right}px ${stage.bottom - opening.bottom}px ${opening.left - stage.left}px round 0px)`,
+      fullClip: `inset(0px 0px 0px 0px round ${radius})`,
+      origin: `${x}px ${y}px`,
+      transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
+    };
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (!requestedInside || scene || entered.current || busy || visual.index !== selected || !item || loadedSrc !== item.src) return;
+    entered.current = true; returnRequested.current = false;
+    setScene({ item, index: visual.index });
+    latest.current.onStepInside?.(item);
+  }, [requestedInside, scene, busy, visual.index, selected, item, loadedSrc]);
+
+  React.useLayoutEffect(() => {
+    if (!scene) {
+      if (focusAfterReturn.current) { focusAfterReturn.current = false; stepButton.current?.focus({ preventScroll: true }); }
+      return;
+    }
+    if (reducedMotion && closing.current) { finishReturn.current?.(); return; }
+    const mask = maskRef.current, view = vistaRef.current, crop = windowCrop();
+    if (!mask || !view || !crop) return;
+    closing.current = false;
+    lookRef.current?.focus({ preventScroll: true });
+    mask.style.clipPath = crop.fullClip;
+    view.style.transformOrigin = crop.origin;
+    if (reducedMotion) { setFlight("vista"); return cancelFlight; }
+    setFlight("entering");
+    const clip = mask.animate([{ clipPath: crop.clip }, { clipPath: crop.fullClip }], { duration: 650, easing: EASING, fill: "both" });
+    const zoom = view.animate([{ transform: crop.transform }, { transform: "translate(0px, 0px) scale(1)" }], { duration: 650, easing: EASING, fill: "both" });
+    const fade = mask.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, fill: "both" });
+    const caption = captionRef.current?.animate([{ opacity: 0, transform: "translateY(20px)" }, { opacity: 1, transform: "translateY(0px)" }], { delay: 300, duration: 350, easing: EASING, fill: "both" });
+    flightAnimations.current = [clip, zoom, fade, ...(caption ? [caption] : [])];
+    zoom.onfinish = () => { if (closing.current) return; clip.cancel(); zoom.cancel(); fade.cancel(); caption?.cancel(); setFlight("vista"); };
+    return cancelFlight;
+  }, [scene, reducedMotion, cancelFlight, windowCrop]);
+
+  React.useEffect(() => {
+    if (!scene || flight !== "vista" || reducedMotion) return;
+    const view = vistaRef.current;
+    if (!view) return;
+    view.style.transformOrigin = "50% 50%";
+    const ambient = view.animate([{ transform: "scale(1)" }, { transform: "scale(1.04)" }], { duration: 32000, iterations: Infinity, direction: "alternate", easing: "ease-in-out" });
+    flightAnimations.current.push(ambient);
+    return () => ambient.cancel();
+  }, [scene, flight, reducedMotion]);
+
+  React.useLayoutEffect(() => {
+    if (requestedInside || !scene || closing.current) return;
+    const finish = () => { cancelFlight(); closing.current = false; entered.current = false; returnRequested.current = false; finishReturn.current = null; focusAfterReturn.current = true; setScene(null); };
+    const mask = maskRef.current, view = vistaRef.current, crop = windowCrop();
+    if (!mask || !view || !crop || reducedMotion) { finish(); return; }
+    const currentClip = getComputedStyle(mask).clipPath;
+    const matrix = new DOMMatrixReadOnly(getComputedStyle(view).transform);
+    const origin = getComputedStyle(view).transformOrigin.split(" ").map(Number.parseFloat);
+    const nextOrigin = crop.origin.split(" ").map(Number.parseFloat);
+    const tx = matrix.m41 + (1 - matrix.m11) * ((origin[0] ?? 0) - (nextOrigin[0] ?? 0));
+    const ty = matrix.m42 + (1 - matrix.m22) * ((origin[1] ?? 0) - (nextOrigin[1] ?? 0));
+    const captionOpacity = captionRef.current ? getComputedStyle(captionRef.current).opacity : "0";
+    cancelFlight();
+    view.style.transformOrigin = crop.origin;
+    closing.current = true; finishReturn.current = finish;
+    setFlight("returning");
+    const clip = mask.animate([{ clipPath: currentClip }, { clipPath: crop.clip }], { duration: 480, easing: EASING, fill: "both" });
+    const zoom = view.animate([{ transform: `translate(${tx}px, ${ty}px) scale(${matrix.m11})` }, { transform: crop.transform }], { duration: 480, easing: EASING, fill: "both" });
+    const fade = mask.animate([{ opacity: 1 }, { opacity: 1, offset: 0.75 }, { opacity: 0 }], { duration: 480, fill: "both" });
+    const caption = captionRef.current?.animate([{ opacity: captionOpacity }, { opacity: 0 }], { duration: 160, fill: "both" });
+    flightAnimations.current = [clip, zoom, fade, ...(caption ? [caption] : [])];
+    zoom.onfinish = finish;
+  }, [requestedInside, scene, reducedMotion, cancelFlight, windowCrop]);
+
+  const stepInside = () => {
+    if (busy || scene || visual.index !== selected || !item || loadedSrc !== item.src) return;
+    setUserStopped(true);
+    if (inside === undefined) setLocalInside(true);
+    onInsideChange?.(true);
+  };
+  const backToElevator = React.useCallback(() => {
+    if (!scene || closing.current || returnRequested.current) return;
+    returnRequested.current = true;
+    if (inside === undefined) setLocalInside(false);
+    onInsideChange?.(false);
+    queueMicrotask(() => { returnRequested.current = false; });
+  }, [scene, inside, onInsideChange]);
+
+  React.useEffect(() => {
+    if (!scene) return;
+    const onKey = (event) => { if (event.key === "Escape") backToElevator(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [scene, backToElevator]);
+
+  return (
+    <div {...rest} role="region" aria-label={rest["aria-label"] ?? "엘리베이터 갤러리"} aria-busy={busy}
+      data-slot="elevator-doors-gallery" data-phase={visual.phase} data-floor={visual.index} data-target={selected}
+      data-inside={scene !== null} data-autoplay={autoplay} data-playing={playing}
+      className={`@container relative isolate w-full max-w-[560px] overflow-hidden rounded-[28px] border border-border bg-card p-4 text-card-foreground shadow-xl shadow-foreground/5 ${className ?? ""}`}>
+      <div data-cabin inert={scene !== null ? "" : undefined}
+        className={`grid min-w-0 items-center justify-items-center gap-5 transition-[opacity,filter] duration-500 motion-reduce:transition-none @min-[480px]:grid-cols-[minmax(0,300px)_136px] @min-[480px]:justify-center @min-[480px]:gap-8 ${scene && flight !== "returning" ? "opacity-25 brightness-50" : "opacity-100"}`}
+        style={{ transitionDelay: scene && flight !== "returning" && !reducedMotion ? "120ms" : "0ms" }}>
+        <div data-landing className="flex w-full min-w-0 max-w-[288px] flex-col items-center @min-[480px]:max-w-[300px]">
+          <div data-indicator data-arrived={visual.arrived || undefined} data-direction={visual.direction} aria-hidden="true"
+            className={`mb-2.5 flex h-9 min-w-28 items-center justify-center gap-2.5 rounded-lg border border-foreground/80 bg-foreground px-4 text-background shadow-md shadow-foreground/15 transition-shadow duration-300 motion-reduce:transition-none dark:border-border dark:bg-background dark:text-foreground ${visual.arrived ? "ring-2 ring-chart-1/50" : ""}`}>
+            <span className={`text-[10px] leading-none transition-opacity duration-150 motion-reduce:transition-none ${busy ? "text-chart-1 opacity-100" : "opacity-35"}`}>{visual.direction < 0 ? "▼" : "▲"}</span>
+            <span data-indicator-value className="font-mono text-lg font-medium leading-none tabular-nums tracking-[0.14em]">{displayedLabel}</span>
+          </div>
+          <div data-car className="relative aspect-[5/7] w-full overflow-hidden rounded-t-[22px] rounded-b-lg bg-muted p-2.5 pb-3.5 shadow-lg shadow-foreground/10 ring-1 ring-inset ring-foreground/15">
+            <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-r from-foreground/15 via-background/30 to-foreground/15" />
+            <span aria-hidden="true" className="pointer-events-none absolute inset-x-2.5 bottom-1 h-1 rounded-full bg-foreground/15" />
+            <div data-doorway className="relative size-full overflow-hidden rounded-t-[14px] rounded-b-[3px] bg-foreground/90 dark:bg-background">
+              {item ? (
+                <button ref={stepButton} data-step-inside type="button" aria-label={`${text.stepInside}${item.title ? ` · ${item.title}` : ""}`}
+                  disabled={busy || visual.index !== selected || loadedSrc !== item.src || failedSrc === item.src}
+                  onClick={stepInside}
+                  className="group absolute inset-0 overflow-hidden text-left outline-none enabled:cursor-zoom-in focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                  <img ref={sourceView} data-floor-view data-index={visual.index} src={item.src} alt={item.alt ?? item.title ?? ""} draggable={false}
+                    onLoad={(event) => setLoadedSrc(event.currentTarget.getAttribute("src") ?? "")}
+                    onError={() => setFailedSrc(item.src)}
+                    className={`absolute inset-0 size-full object-cover ${failedSrc === item.src ? "invisible" : ""}`} />
+                  {failedSrc === item.src && <span className="absolute inset-0 flex items-center justify-center text-sm text-background/70 dark:text-muted-foreground">{text.imageUnavailable}</span>}
+                  <span data-door-caption className={`pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/95 via-foreground/55 to-transparent px-4 pb-5 pt-20 text-background transition-opacity duration-200 motion-reduce:transition-none dark:from-background/95 dark:via-background/55 dark:text-foreground ${busy || loadedSrc !== item.src ? "opacity-0" : "opacity-100"}`}>
+                    <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.18em] opacity-80">{text.floor} {displayLabel(floorLabel(item, visual.index))}</span>
+                    {item.title && <span className="block text-xl font-medium leading-tight tracking-tight">{item.title}</span>}
+                    {item.caption && <span className="mt-1.5 block max-w-[30ch] text-xs leading-relaxed opacity-85">{item.caption}</span>}
+                    <span className="mt-4 inline-flex items-center gap-2 border-b border-current/50 pb-1 text-xs font-medium">{text.stepInside} <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 18 18 6M6 6h12v12" /></svg></span>
+                  </span>
+                </button>
+              ) : <span className="absolute inset-0 flex items-center justify-center text-sm text-background/70 dark:text-muted-foreground">{text.empty}</span>}
+              {["left", "right"].map((side, index) => (
+                <div key={side} ref={(node) => { doors.current[index] = node; }} data-door={side} aria-hidden="true"
+                  className={`pointer-events-none absolute inset-y-0 z-10 w-1/2 overflow-hidden bg-muted will-change-transform ${index === 0 ? "left-0" : "right-0"}`}
+                  style={{ transform: `translateX(${index === 0 ? -OPEN_POSITION : OPEN_POSITION}%)` }}>
+                  <span className={`absolute inset-0 from-foreground/20 via-background/25 to-foreground/10 ${index === 0 ? "bg-gradient-to-r" : "bg-gradient-to-l"}`} />
+                  <span className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent_0_3px,var(--color-foreground)_3px_4px)] opacity-[0.05]" />
+                  <span className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-foreground/10" />
+                  <span className={`absolute inset-y-0 w-0.5 bg-foreground/25 ${index === 0 ? "right-0" : "left-0"}`} />
+                </div>
+              ))}
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] ring-1 ring-inset ring-foreground/20" />
+              {visual.phase === "travelling" && !reducedMotion && (
+                <div data-travel-light aria-hidden="true" className="pointer-events-none absolute inset-x-0 z-20 h-px bg-chart-1/50 shadow-sm shadow-chart-1/40" ref={travelLight} />
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div ref={panelRef} data-floor-panel data-panel-layout={widePanel ? "two-column" : "single-row"} role="group" aria-label={text.chooseFloor}
+          className="relative flex w-full max-w-[340px] flex-col justify-center overflow-hidden rounded-2xl bg-muted px-3 py-3.5 shadow-md shadow-foreground/10 ring-1 ring-inset ring-foreground/15 @min-[480px]:min-h-[300px] @min-[480px]:max-w-none @min-[480px]:py-6"
+          onKeyDown={(event) => {
+            let position = ascendingFloors.indexOf(selected);
+            if (event.key === "ArrowUp") position = Math.min(total - 1, position + 1);
+            else if (event.key === "ArrowDown") position = Math.max(0, position - 1);
+            else if (event.key === "Home") position = 0;
+            else if (event.key === "End") position = total - 1;
+            else return;
+            const next = ascendingFloors[position];
+            if (next === undefined) return;
+            event.preventDefault();
+            selectFloor(next);
+            buttons.current[next]?.focus({ preventScroll: true });
+          }}>
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/45 via-transparent to-foreground/10" />
+          <p className="relative mb-3 text-center text-[14px] font-semibold tracking-[0.08em] text-foreground" style={{ textShadow: "0 0 12px var(--accent)" }}>{text.chooseFloor}</p>
+          <div className="relative grid gap-2 @min-[480px]:gap-x-2 @min-[480px]:gap-y-4" style={{ gridTemplateColumns: `repeat(${widePanel ? 2 : Math.max(1, total)}, minmax(0, 1fr))` }}>
+            {panelButtons.map(({ index, row, column }) => {
+              const entry = items[index];
+              if (!entry) return null;
+              const lampOn = selected === index && (visual.index !== selected || visual.phase === "closing" || visual.phase === "travelling");
+              return (
+                <button key={index} ref={(node) => { buttons.current[index] = node; }} type="button" data-floor-button={index} data-floor-lamp={lampOn ? "on" : "off"}
+                  style={{ gridRow: row, gridColumn: column }}
+                  aria-label={`${text.floor} ${floorLabel(entry, index)}${entry.title ? ` · ${entry.title}` : ""}`}
+                  aria-pressed={selected === index}
+                  onClick={() => selectFloor(index)}
+                  className={`relative mx-auto flex size-10 items-center justify-center rounded-full border border-foreground/15 bg-gradient-to-b from-card to-muted font-mono text-xs tabular-nums outline-none transition-[color,box-shadow,filter] duration-150 hover:brightness-105 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-muted motion-reduce:transition-none @min-[480px]:size-11 @min-[480px]:text-[13px] ${lampOn ? "ring-2 ring-chart-1 text-chart-1 shadow-[0_0_12px] shadow-chart-1/60 focus-visible:ring-chart-1" : "text-foreground shadow-sm shadow-foreground/15 focus-visible:ring-ring"}`}>
+                  <span data-button-face aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-full shadow-inner shadow-foreground/15" />
+                  <span className="relative">{displayLabel(floorLabel(entry, index))}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      {scene && (
+        <div ref={lookRef} data-lookout data-flight={flight} role="dialog" aria-modal="false"
+          aria-label={scene.item.title ?? `${text.floor} ${displayLabel(floorLabel(scene.item, scene.index))}`}
+          tabIndex={-1} className="absolute inset-0 z-30 cursor-zoom-out outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          onClick={backToElevator}>
+          <div ref={maskRef} data-vista-mask className="absolute inset-0 overflow-hidden">
+            <img ref={vistaRef} data-vista src={scene.item.src} alt={scene.item.alt ?? scene.item.title ?? ""} draggable={false} className="absolute inset-0 h-full w-full max-w-none overflow-visible object-cover" />
+          </div>
+          <div ref={captionRef} data-vista-caption className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/95 via-foreground/50 to-transparent px-[6%] pb-[6%] pt-[20%] text-background dark:from-background/95 dark:via-background/50 dark:text-foreground">
+            <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.2em] opacity-80">{text.floor} {displayLabel(floorLabel(scene.item, scene.index))}</p>
+            {scene.item.title && <h3 className="text-3xl font-medium tracking-tight">{scene.item.title}</h3>}
+            {scene.item.caption && <p className="mt-2 text-sm opacity-90">{scene.item.caption}</p>}
+            <p className="mt-5 text-[11px] uppercase tracking-[0.16em] opacity-65">{text.returnHint}</p>
+          </div>
+          <BackButton data-back-to-elevator onClick={(event) => { event.stopPropagation(); backToElevator(); }} style={{ position: "absolute", left: 16, top: 16 }}>{text.backToElevator}</BackButton>
+        </div>
+      )}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</div>
+    </div>
+  );
+}
+
+/* ───────────── MetroHero (provided scroll-locked video): one trainee's room, ending on a linked line ───────────── */
+function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+
+function RoomFilm({ m, onClose, onGoods, onPv }) {
+  const sectionRef = React.useRef(null), videoRef = React.useRef(null), titleRef = React.useRef(null);
+  const hintRef = React.useRef(null), endRef = React.useRef(null), progressBarRef = React.useRef(null), closeRef = React.useRef(null);
+  const [ready, setReady] = React.useState(false);
+  const [atEnd, setAtEnd] = React.useState(false);
+  const [note, setNote] = React.useState("");
+  const scrubDistance = 3400;
+
+  React.useEffect(() => { closeRef.current?.focus({ preventScroll: true }); }, []);
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  React.useEffect(() => {
+    const video = videoRef.current, section = sectionRef.current;
+    if (!video || !section) return;
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    let duration = 0, rafId = 0, targetProgress = 0, currentProgress = 0;
+    let hasStartedScrolling = false, isSeeking = false, pendingTime = null;
+    let locked = false, lockedScrollY = 0, touchStartY = 0, endShown = false;
+
+    const onLoadedData = () => {
+      duration = video.duration || 0;
+      setReady(true);
+      if (reduceMotion) { video.currentTime = duration * 0.95; setAtEnd(true); }
+    };
+    video.addEventListener("loadeddata", onLoadedData);
+    const p = video.play();
+    if (p && typeof p.then === "function") p.then(() => video.pause()).catch(() => {}); else video.pause();
+
+    const onSeeked = () => {
+      isSeeking = false;
+      if (pendingTime !== null) { const t = pendingTime; pendingTime = null; isSeeking = true; video.currentTime = t; }
+    };
+    video.addEventListener("seeked", onSeeked);
+    function seekTo(t) { if (isSeeking) { pendingTime = t; return; } isSeeking = true; video.currentTime = t; }
+
+    function engageLock() {
+      if (locked) return;
+      locked = true; lockedScrollY = window.scrollY;
+      const b = document.body.style;
+      b.position = "fixed"; b.top = `-${lockedScrollY}px`; b.left = "0"; b.right = "0"; b.width = "100%"; b.overscrollBehavior = "none";
+    }
+    function releaseLock() {
+      if (!locked) return;
+      locked = false;
+      const b = document.body.style;
+      b.position = ""; b.top = ""; b.left = ""; b.right = ""; b.width = ""; b.overscrollBehavior = "";
+      window.scrollTo(0, lockedScrollY);
+    }
+    engageLock();
+
+    function addDelta(deltaY) {
+      targetProgress = clamp(targetProgress + deltaY / scrubDistance, 0, 1);
+      if (targetProgress > 0.001) hasStartedScrolling = true;
+    }
+    const onWheel = (e) => { addDelta(e.deltaY); e.preventDefault(); };
+    const onTouchStart = (e) => { touchStartY = e.touches[0]?.clientY ?? 0; };
+    const onTouchMove = (e) => { const y = e.touches[0]?.clientY ?? touchStartY; addDelta((touchStartY - y) * 1.6); touchStartY = y; e.preventDefault(); };
+    const onKey = (e) => {
+      if (["ArrowDown", "PageDown", " "].includes(e.key)) { addDelta(260); e.preventDefault(); }
+      if (["ArrowUp", "PageUp"].includes(e.key)) { addDelta(-260); e.preventDefault(); }
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("keydown", onKey);
+    section.addEventListener("touchstart", onTouchStart, { passive: true, capture: true });
+    section.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
+
+    function frame() {
+      currentProgress += (targetProgress - currentProgress) * 0.16;
+      if (duration > 0) seekTo(currentProgress * duration);
+      if (videoRef.current) videoRef.current.style.transform = `scale(${1.02 + currentProgress * 0.05})`;
+      if (titleRef.current) {
+        const t = 1 - clamp(currentProgress / 0.22, 0, 1);
+        titleRef.current.style.opacity = String(t);
+        titleRef.current.style.transform = `translateY(${(1 - t) * -24}px)`;
+        titleRef.current.style.filter = `blur(${(1 - t) * 10}px)`;
+      }
+      if (hintRef.current) hintRef.current.style.opacity = hasStartedScrolling ? "0" : "1";
+      if (endRef.current) {
+        const t = clamp((currentProgress - 0.84) / 0.13, 0, 1);
+        endRef.current.style.opacity = String(t);
+        endRef.current.style.transform = `translateY(${(1 - t) * 22}px)`;
+        endRef.current.style.filter = `blur(${(1 - t) * 8}px)`;
+      }
+      if (progressBarRef.current) progressBarRef.current.style.transform = `scaleX(${currentProgress})`;
+      if (!endShown && currentProgress > 0.95) { endShown = true; setAtEnd(true); }
+      if (endShown && currentProgress < 0.88) { endShown = false; setAtEnd(false); }
+      rafId = requestAnimationFrame(frame);
+    }
+    if (!reduceMotion) rafId = requestAnimationFrame(frame);
+    else { if (endRef.current) endRef.current.style.opacity = "1"; if (titleRef.current) titleRef.current.style.opacity = "0"; }
+
+    return () => {
+      video.removeEventListener("loadeddata", onLoadedData);
+      video.removeEventListener("seeked", onSeeked);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("keydown", onKey);
+      section.removeEventListener("touchstart", onTouchStart, true);
+      section.removeEventListener("touchmove", onTouchMove, true);
+      cancelAnimationFrame(rafId);
+      releaseLock();
+    };
+  }, []);
+
+  const pending = (label) => (e) => { e.preventDefault(); setNote(`'${label}' 링크는 채널·영상 주소가 정해지면 연결돼요.`); };
+  const floorTag = `${String(m.floor).padStart(2, "0")}F · ${m.room}`;
+
+  return (
+    <div ref={sectionRef} className="film" role="dialog" aria-modal="true" aria-label={`${m.ko}의 방`}
+      style={{ position: "fixed", inset: 0, zIndex: 60, overflow: "hidden", background: `#05060a url(${m.src}) center / cover no-repeat`, touchAction: "none" }}>
+      <video ref={videoRef} src={m.video} poster={m.src} muted playsInline preload="auto"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 1, transformOrigin: "center", willChange: "transform", transition: "opacity .6s ease", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(5,6,10,.55), rgba(5,6,10,0) 28%, rgba(5,6,10,0) 52%, rgba(5,6,10,.82))", pointerEvents: "none" }} />
+
+      <div style={{ position: "absolute", top: "calc(22px + env(safe-area-inset-top, 0px))", left: "max(20px, env(safe-area-inset-left, 0px))", display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--mono)", fontSize: 12, letterSpacing: ".2em", color: m.accent, textTransform: "uppercase" }}>
+        <span aria-hidden="true" style={{ width: 24, height: 1, background: "currentColor" }} />{floorTag}
+      </div>
+
+      <div ref={titleRef} style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "0 6%", textAlign: "center", pointerEvents: "none", color: "#fff", textShadow: "0 6px 40px rgba(0,0,0,.55)" }}>
+        <span style={{ fontFamily: "var(--display)", fontStyle: "italic", fontSize: "clamp(48px, 9vw, 128px)", lineHeight: .95, letterSpacing: "-0.02em" }}>{m.en}</span>
+        <span style={{ fontSize: 16, letterSpacing: ".3em", opacity: .85 }}>{m.ko}</span>
+      </div>
+
+      <div ref={endRef} style={{ position: "absolute", left: 0, right: 0, bottom: "calc(clamp(36px, 9vh, 88px) + env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", alignItems: "center", gap: 22, padding: "0 max(20px, env(safe-area-inset-left, 0px))", textAlign: "center", opacity: 0, pointerEvents: atEnd ? "auto" : "none" }}>
+        <a href="#" className="endlink" tabIndex={atEnd ? 0 : -1} onClick={(e) => { e.preventDefault(); onPv?.(m); }}
+          style={{ fontFamily: "var(--display)", fontStyle: "italic", fontSize: "clamp(28px, 4.6vw, 58px)", lineHeight: 1.15, textShadow: "0 4px 30px rgba(0,0,0,.6)", textWrap: "balance" }}>
+          {m.end} <span className="arrow" aria-hidden="true">→</span>
+        </a>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
+          <OriginButton href={LIVE_URL} tabIndex={atEnd ? 0 : -1}><span className="dot" aria-hidden="true" />지금 라이브 보러 가기 ↗</OriginButton>
+          <OriginButton tabIndex={atEnd ? 0 : -1} onClick={() => onPv?.(m)}>▶ {m.ko} PV 보기</OriginButton>
+          <OriginButton href={m.chatUrl} tabIndex={atEnd ? 0 : -1}>전용 채팅으로 {m.ko}와 대화하기 ↗</OriginButton>
+          <OriginButton tabIndex={atEnd ? 0 : -1} onClick={onGoods}>{m.ko} 굿즈 보기</OriginButton>
+        </div>
+        <p role="status" style={{ margin: 0, minHeight: 18, fontSize: 13, color: "rgba(255,255,255,.75)" }}>{note}</p>
+      </div>
+
+      <div ref={hintRef} style={{ position: "absolute", left: "50%", bottom: "calc(clamp(22px, 6vh, 48px) + env(safe-area-inset-bottom, 0px))", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: "rgba(255,255,255,.8)", fontFamily: "var(--mono)", fontSize: 11, letterSpacing: ".3em", transition: "opacity .4s ease", pointerEvents: "none" }}>
+        <span>SCROLL</span>
+        <svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true" style={{ animation: "metro-hero-bounce 1.6s ease-in-out infinite" }}>
+          <style>{`@keyframes metro-hero-bounce{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(5px);opacity:1}}@media (prefers-reduced-motion: reduce){svg{animation:none!important}}`}</style>
+          <path d="M7 1 L7 17 M2 12 L7 17 L12 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+
+      <BackButton ref={closeRef} onClick={onClose}
+        style={{ position: "absolute", top: "calc(14px + env(safe-area-inset-top, 0px))", left: "max(16px, env(safe-area-inset-left, 0px))" }}>
+        엘리베이터로
+      </BackButton>
+
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 2, background: "rgba(255,255,255,.12)" }}>
+        <div ref={progressBarRef} style={{ height: "100%", width: "100%", background: m.accent, transform: "scaleX(0)", transformOrigin: "left center" }} />
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── OriginButton (provided component): a fill grows from the pointer ───────────── */
+function coverDiameter(w, h, x, y) {
+  return Math.ceil(2 * Math.max(Math.hypot(x, y), Math.hypot(w - x, y), Math.hypot(x, h - y), Math.hypot(w - x, h - y)));
+}
+const OriginButton = React.forwardRef(function OriginButton({ href, children, className = "", disabled = false, type = "button", tone, ...props }, ref) {
+  const nodeRef = React.useRef(null);
+  const [hovered, setHovered] = React.useState(false);
+  const [pressed, setPressed] = React.useState(false);
+  const [origin, setOrigin] = React.useState({ x: 0, y: 0 });
+  const [cover, setCover] = React.useState(0);
+  const setRef = React.useCallback((n) => { nodeRef.current = n; if (typeof ref === "function") ref(n); else if (ref) ref.current = n; }, [ref]);
+  const at = (x, y) => { const r = nodeRef.current?.getBoundingClientRect(); if (!r) return; setOrigin({ x, y }); setCover(coverDiameter(r.width, r.height, x, y)); };
+  const fromPointer = (e) => { const r = e.currentTarget.getBoundingClientRect(); at(e.clientX - r.left, e.clientY - r.top); };
+  const fromCenter = () => { const r = nodeRef.current?.getBoundingClientRect(); if (r) at(r.width / 2, r.height / 2); };
+  const show = !disabled && (hovered || pressed);
+  const Tag = href ? "a" : "button";
+  const linkProps = href ? { href, target: "_blank", rel: "noopener noreferrer" } : { type, disabled };
+  return (
+    <Tag {...props} {...linkProps} ref={setRef} data-pressed={pressed ? "true" : "false"}
+      className={`ob${show ? " on" : ""}${tone ? " ob-" + tone : ""} ${className}`}
+      onPointerEnter={(e) => { props.onPointerEnter?.(e); if (!disabled) { fromPointer(e); setHovered(true); } }}
+      onPointerLeave={(e) => { props.onPointerLeave?.(e); setHovered(false); setPressed(false); }}
+      onPointerDown={(e) => { props.onPointerDown?.(e); if (!disabled && e.button === 0) { fromPointer(e); setPressed(true); setHovered(true); } }}
+      onPointerUp={(e) => { props.onPointerUp?.(e); setPressed(false); }}
+      onPointerCancel={() => setPressed(false)}
+      onFocus={(e) => { props.onFocus?.(e); if (!disabled && e.currentTarget.matches(":focus-visible")) { fromCenter(); setHovered(true); } }}
+      onBlur={(e) => { props.onBlur?.(e); setPressed(false); setHovered(false); }}
+      onKeyDown={(e) => { props.onKeyDown?.(e); if (!disabled && !e.repeat && (e.key === " " || e.key === "Enter")) { fromCenter(); setPressed(true); setHovered(true); } }}
+      onKeyUp={(e) => { props.onKeyUp?.(e); if (e.key === " " || e.key === "Enter") { setPressed(false); if (!e.currentTarget.matches(":focus-visible")) setHovered(false); } }}>
+      <span aria-hidden="true" className="ob-fill" style={{ width: cover, height: cover, left: origin.x, top: origin.y, transform: `translate(-50%, -50%) scale(${show && cover > 0 ? 1 : 0})` }} />
+      <span className="ob-label">{children}</span>
+    </Tag>
+  );
+});
+
+/* ───────────── PV player & goods deck viewer ───────────── */
+function useModalKeys(onClose, extra) {
+  React.useEffect(() => {
+    const h = (e) => {
+      if (e.key === "Escape") { e.stopImmediatePropagation(); e.preventDefault(); onClose(); return; }
+      if (extra) extra(e);
+    };
+    window.addEventListener("keydown", h, true);
+    return () => window.removeEventListener("keydown", h, true);
+  }, [onClose, extra]);
+}
+
+function PvModal({ m, onClose }) {
+  const closeRef = React.useRef(null);
+  useModalKeys(onClose);
+  React.useEffect(() => { closeRef.current?.focus({ preventScroll: true }); }, []);
+  return (
+    <div className="modal" role="dialog" aria-modal="true" aria-label={`${m.ko} PV`} onClick={onClose} onWheel={(e) => e.stopPropagation()}>
+      <div className="modal-box pv" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-bar">
+          <span><b>{m.ko}</b> · {m.en} PV</span>
+          <button ref={closeRef} type="button" className="modal-x" onClick={onClose} aria-label="닫기">✕</button>
+        </div>
+        <video src={`pv/${m.id}.mp4`} poster={m.src} controls autoPlay playsInline />
+      </div>
+    </div>
+  );
+}
+
+function DeckModal({ onClose }) {
+  const [i, setI] = React.useState(0);
+  const closeRef = React.useRef(null);
+  const go = React.useCallback((d) => setI((x) => Math.max(0, Math.min(SLIDES.length - 1, x + d))), []);
+  const keys = React.useCallback((e) => {
+    if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
+  }, [go]);
+  useModalKeys(onClose, keys);
+  React.useEffect(() => { closeRef.current?.focus({ preventScroll: true }); }, []);
+  return (
+    <div className="modal" role="dialog" aria-modal="true" aria-label="굿즈 시안" onClick={onClose}>
+      <div className="modal-box deck" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-bar">
+          <span><b>굿즈 시안</b> · 남돌 5인 · 7종</span>
+          <span className="deck-count">{i + 1} / {SLIDES.length}</span>
+          <button ref={closeRef} type="button" className="modal-x" onClick={onClose} aria-label="닫기">✕</button>
+        </div>
+        <div className="deck-stage">
+          <img src={SLIDES[i]} alt={`굿즈 시안 ${i + 1}페이지`} />
+          <button type="button" className="deck-nav prev" onClick={() => go(-1)} disabled={i === 0} aria-label="이전 페이지">‹</button>
+          <button type="button" className="deck-nav next" onClick={() => go(1)} disabled={i === SLIDES.length - 1} aria-label="다음 페이지">›</button>
+        </div>
+        <div className="deck-thumbs">
+          {SLIDES.map((src, k) => (
+            <button key={src} type="button" aria-pressed={k === i} aria-label={`${k + 1}페이지`} onClick={() => setI(k)}><img src={src} alt="" /></button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── 6F: access restricted ───────────── */
+function LockedRoom({ m, onClose }) {
+  const closeRef = React.useRef(null);
+  React.useEffect(() => {
+    closeRef.current?.focus({ preventScroll: true });
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="film locked-room" role="dialog" aria-modal="true" aria-label="접근 제한">
+      <img className="lr-bg" src={m.src} alt="" />
+      <div className="lr-body">
+        <p className="lr-tag">06F · ACCESS RESTRICTED</p>
+        <h2 className="lr-title" data-text="접근 권한이 없습니다">접근 권한이 없습니다</h2>
+        <p className="lr-sub">이 방의 주인은 아직 공개되지 않았어요.<br />그 목소리를 가장 먼저 듣고 싶다면.</p>
+        <div className="lr-actions">
+          <OriginButton href={CHAT_URL} tone="amber">전용 채팅에서 먼저 만나기 ↗</OriginButton>
+          <BackButton ref={closeRef} onClick={onClose} className="bb-lg">엘리베이터로 돌아가기</BackButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── Goods (from the merch request deck) ───────────── */
+const GOODS_ORDER = ["wooju", "minjae", "suho", "jiwon", "inwoo"];
+function Goods({ current, onDeck }) {
+  return (
+    <section className="goods" id="goods" aria-labelledby="goods-h">
+      <div className="goods-head">
+        <h2 id="goods-h">Official Goods</h2>
+        <span>데뷔와 함께 공개 · 7종 준비 중</span>
+      </div>
+      <div className="goods-grid">
+        <figure className="g">
+          <div className="g-stage keys">
+            {GOODS_ORDER.map((id) => (
+              <div key={id} className={"key" + (id === current ? " on" : "")}><span className="ring" aria-hidden="true" /><img src={`goods/key_${id}.png`} alt="" /></div>
+            ))}
+          </div>
+          <figcaption><b>아크릴 키링</b><span>5종</span></figcaption>
+        </figure>
+        <figure className="g">
+          <div className="g-stage stickers">
+            {GOODS_ORDER.map((id, i) => (
+              <img key={id} className={"sticker" + (id === current ? " on" : "")} src={`goods/face_${id}.png`} alt="" style={{ "--r": `${[-8, 6, -3, 9, -6][i]}deg` }} />
+            ))}
+          </div>
+          <figcaption><b>스티커 3종</b><span>다꾸 · 재단 · 타투</span></figcaption>
+        </figure>
+        <figure className="g">
+          <div className="g-stage">
+            <div className="cal"><div className="cal-rings" aria-hidden="true" /><img src="goods/calendar.jpg" alt="" /><div className="cal-band"><b>2027</b><span>DESK CALENDAR</span></div></div>
+          </div>
+          <figcaption><b>탁상 캘린더</b><span>표지 + 12개월</span></figcaption>
+        </figure>
+        <figure className="g">
+          <div className="g-stage">
+            <div className="pods"><img src="goods/airpods.jpg" alt="" /><span className="hinge" aria-hidden="true" /></div>
+          </div>
+          <figcaption><b>에어팟 케이스</b><span>단체 무대 컷</span></figcaption>
+        </figure>
+        <figure className="g">
+          <div className="g-stage phones">
+            <div className={"phone" + (current === "wooju" ? " on" : "")}><img src="goods/case_wooju.png" alt="" /><span className="cam" aria-hidden="true" /></div>
+            <div className={"phone" + (current === "minjae" ? " on" : "")}><img src="goods/case_minjae.png" alt="" /><span className="cam" aria-hidden="true" /></div>
+          </div>
+          <figcaption><b>폰 케이스</b><span>한우주 · 강민재</span></figcaption>
+        </figure>
+      </div>
+    </section>
+  );
+}
+
+/* ───────────── Intro: spotlight → ranking seats → VS split → the group (scroll-locked hero, stills from the story video) ───────────── */
+const INTRO_LINES = [
+  { at: 0.0, len: 0.17, text: "문이 열리면, 무대가 시작된다." },
+  { at: 0.3, len: 0.15, text: "올라설 수 있는 자리는 정해져 있다." },
+  { at: 0.455, len: 0.14, text: "아직, 끝나지 않았다." },
+  { at: 0.6, len: 0.14, text: "같은 무대, 다른 이름. 끝까지 남는 쪽은?" },
+  { at: 0.745, len: 0.12, text: "데뷔는, 당신의 선택으로 완성된다." },
+];
+
+// What shows through the opening train doors: A = the red-eyed close-up, B = the walk into the light (story video 35.7–37.5s).
+const DOOR_PLANS = { a: "A안 · 눈빛", b: "B안 · 빛으로 걸어가는 뒷모습" };
+// Openings that show what is beyond the train, measured frame by frame in the 1280×720 clip
+// (percent x0, x1, y0, y1): [time, door gap, left door window, right door window, left side window, right side window].
+const DOOR_KEYS = [
+  [2.80, [49.5, 50.5, 18, 82], null, null, null, null],
+  [2.90, [47, 53, 18, 83], [36.5, 44, 22, 62], [56, 63.5, 22, 62], null, null],
+  [3.10, [45.3, 54.7, 17.5, 84], [34.7, 40.6, 23, 61], [56.7, 64.4, 23, 61], null, null],
+  [3.30, [43.1, 57, 17, 86], [34.8, 40.4, 23, 61], [59.6, 65.2, 23, 61], [28.6, 30, 23, 61], [70.3, 72, 23, 61]],
+  [3.60, [39.9, 60.1, 16.5, 94], [34.25, 36.5, 22, 62], [63.3, 65.5, 22, 62], [27.5, 29.75, 22, 62], [70.25, 72.5, 22, 62]],
+  [3.90, [35.9, 64.1, 15, 94.5], null, null, [25.8, 28.6, 21, 63], [70.6, 73.6, 21, 63]],
+  [4.20, [32.6, 66.9, 13, 96], null, null, [24.35, 27.7, 18, 64], [72.5, 75.3, 18, 64]],
+  [4.50, [31.4, 68, 11, 100], null, null, [22.4, 25.8, 18, 64], [73.6, 77, 18, 64]],
+  [4.62, [31.4, 68.6, 11, 100], null, null, [21.9, 25.3, 18, 64], [74, 77.5, 18, 64]],
+];
+function doorRects(t) {
+  if (t < DOOR_KEYS[0][0]) return [];
+  let a = DOOR_KEYS[DOOR_KEYS.length - 1], b = a, u = 0;
+  for (let i = 0; i < DOOR_KEYS.length - 1; i++) {
+    if (t >= DOOR_KEYS[i][0] && t <= DOOR_KEYS[i + 1][0]) { a = DOOR_KEYS[i]; b = DOOR_KEYS[i + 1]; u = (t - a[0]) / (b[0] - a[0]); break; }
+  }
+  const lerp = (p, q) => p.map((x, k) => x + (q[k] - x) * u);
+  const mid = (r) => [(r[0] + r[1]) / 2, (r[0] + r[1]) / 2, r[2], r[3]];
+  const out = [];
+  for (let j = 1; j <= 5; j++) {
+    const ra = a[j], rb = b[j];
+    let r = null;
+    if (ra && rb) r = lerp(ra, rb);
+    else if (ra) r = lerp(ra, mid(ra));
+    else if (rb) r = lerp(mid(rb), rb);
+    if (r && r[1] - r[0] > 0.05) out.push({ r, round: j > 1 });
+  }
+  return out;
+}
+
+function Intro({ onDone }) {
+  const wrapRef = React.useRef(null), doorBgRef = React.useRef(null), eyesRef = React.useRef(null), walkRef = React.useRef(null);
+  const [plan] = React.useState("b");
+  const awakeRef = React.useRef(null);
+  const planRef = React.useRef(plan);
+  planRef.current = plan;
+  const vidRef = React.useRef(null), slitRef = React.useRef(null), whiteRef = React.useRef(null);
+  const secRef = React.useRef(null), s2 = React.useRef(null), vs = React.useRef(null);
+  const vsL = React.useRef(null), vsR = React.useRef(null), seam = React.useRef(null), vsMark = React.useRef(null), grp = React.useRef(null);
+  const titleRef = React.useRef(null), barRef = React.useRef(null), hintRef = React.useRef(null);
+  const lineRefs = React.useRef([]);
+  const api = React.useRef({});
+  const [done, setDone] = React.useState(false);
+
+  React.useEffect(() => {
+    const sec = secRef.current;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) { setDone(true); sec.classList.add("rest"); return; }
+    let target = 0, cur = 0, raf = 0, released = false, touchY = 0;
+    const b = document.body.style;
+    const unlock = () => { b.position = ""; b.top = ""; b.left = ""; b.right = ""; b.width = ""; b.overscrollBehavior = ""; };
+    b.position = "fixed"; b.top = "0"; b.left = "0"; b.right = "0"; b.width = "100%"; b.overscrollBehavior = "none";
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const ramp = (x, a, z) => clamp((x - a) / (z - a), 0, 1);
+    const win = (x, a, z) => Math.sin(Math.PI * ramp(x, a, z));
+
+    const release = () => { if (released) return; released = true; cleanup(); unlock(); setDone(true); onDone?.(); };
+    const add = (d) => {
+      if (released) return;
+      if (d > 0 && target >= 1 && cur > 0.985) { release(); return; }
+      target = clamp(target + d / 4400, 0, 1);
+    };
+    api.current.skip = () => { cur = target = 1; paint(1); release(); };
+    const onWheel = (e) => { e.preventDefault(); add(e.deltaY); };
+    const onTS = (e) => { touchY = e.touches[0]?.clientY ?? 0; };
+    const onTM = (e) => { const y = e.touches[0]?.clientY ?? touchY; add((touchY - y) * 1.8); touchY = y; e.preventDefault(); };
+    const onKey = (e) => {
+      if (["ArrowDown", "PageDown", " "].includes(e.key)) { e.preventDefault(); add(300); }
+      if (["ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); add(-300); }
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("keydown", onKey);
+    sec.addEventListener("touchstart", onTS, { passive: true });
+    sec.addEventListener("touchmove", onTM, { passive: false });
+
+    const v = vidRef.current;
+    let seeking = false, pending = null;
+    const seek = (t) => { if (!v || !v.duration) return; if (seeking) { pending = t; return; } seeking = true; v.currentTime = t; };
+    const onSeeked = () => { seeking = false; if (pending !== null) { const t = pending; pending = null; seek(t); } };
+    v?.addEventListener("seeked", onSeeked);
+    const pp = v?.play(); if (pp && pp.then) pp.then(() => v.pause()).catch(() => {});
+    const wv = walkRef.current;
+    let wSeeking = false, wPending = null;
+    const wSeek = (t) => { if (!wv || !wv.duration) return; if (wSeeking) { wPending = t; return; } wSeeking = true; wv.currentTime = t; };
+    const onWSeeked = () => { wSeeking = false; if (wPending !== null) { const t = wPending; wPending = null; wSeek(t); } };
+    wv?.addEventListener("seeked", onWSeeked); // walk clip now baked into doors_b.mp4
+    const wp = wv?.play(); if (wp && wp.then) wp.then(() => wv.pause()).catch(() => {});
+    const av = awakeRef.current;
+    let aSeeking = false, aPending = null;
+    const aSeek = (t) => { if (!av || !av.duration) return; if (aSeeking) { aPending = t; return; } aSeeking = true; av.currentTime = t; };
+    const onASeeked = () => { aSeeking = false; if (aPending !== null) { const t = aPending; aPending = null; aSeek(t); } };
+    av?.addEventListener("seeked", onASeeked);
+    const ap = av?.play(); if (ap && ap.then) ap.then(() => av.pause()).catch(() => {});
+
+    function paint(c) {
+      // 1 · the doors open onto the walk into the light, and the camera pushes through (pre-composited clip)
+      seek(ramp(c, 0, 0.31) * ((v && v.duration) || 8));
+      wrapRef.current.style.opacity = String(1 - ramp(c, 0.305, 0.33));
+      // black-and-white until the doors start to part; colour sweeps in from the left as they open
+      whiteRef.current.style.opacity = "0";
+      // 2 · the ranking seats, out of the white
+      const o2 = ramp(c, 0.3, 0.33) * (1 - ramp(c, 0.44, 0.47));
+      s2.current.style.opacity = String(o2);
+      s2.current.style.transform = `scale(${1.08 + ramp(c, 0.3, 0.47) * 0.1})`;
+      // 2b · eyes open, blue turns red (story video 31.7–34.0s)
+      const oa = ramp(c, 0.44, 0.47) * (1 - ramp(c, 0.585, 0.615));
+      awakeRef.current.style.opacity = String(oa);
+      awakeRef.current.style.transform = `scale(${1.02 + ramp(c, 0.44, 0.6) * 0.08})`;
+      aSeek(ramp(c, 0.455, 0.585) * ((av && av.duration) || 0));
+      // 3 · VS: two sides close in, then split apart to reveal the group
+      const o3 = ramp(c, 0.585, 0.615);
+      const closeIn = ease(ramp(c, 0.6, 0.72));
+      const split = ease(ramp(c, 0.74, 0.86));
+      vs.current.style.opacity = String(o3);
+      vsL.current.style.transform = `translate(${-6 + closeIn * 6 - split * 62}%, ${-split * 8}%)`;
+      vsR.current.style.transform = `translate(${6 - closeIn * 6 + split * 62}%, ${split * 8}%)`;
+      seam.current.style.opacity = String(closeIn * (1 - split));
+      vsMark.current.style.opacity = String(win(c, 0.61, 0.76));
+      vsMark.current.style.transform = `translate(-50%, -50%) scale(${0.9 + closeIn * 0.15})`;
+      // 4 · the group, behind the split
+      grp.current.style.opacity = String(ramp(c, 0.74, 0.79));
+      grp.current.style.transform = `scale(${1.15 - split * 0.12})`;
+      grp.current.style.filter = `brightness(${1 - ramp(c, 0.86, 0.95) * 0.45})`;
+      INTRO_LINES.forEach((l, k) => {
+        const el = lineRefs.current[k]; if (!el) return;
+        const o = win(c, l.at, l.at + l.len);
+        el.style.opacity = String(o);
+        el.style.transform = `translateY(${(1 - o) * 14}px)`;
+        el.style.filter = `blur(${(1 - o) * 6}px)`;
+      });
+      const t = ramp(c, 0.87, 0.96);
+      titleRef.current.style.opacity = String(t);
+      titleRef.current.style.transform = `scale(${0.96 + t * 0.04})`;
+      titleRef.current.style.filter = `blur(${(1 - t) * 8}px)`;
+      hintRef.current.textContent = c > 0.97 ? "계속 스크롤하면 엘리베이터로" : "SCROLL";
+      barRef.current.style.transform = `scaleX(${c})`;
+    }
+    const frame = () => { cur += (target - cur) * 0.12; paint(cur); raf = requestAnimationFrame(frame); };
+    raf = requestAnimationFrame(frame);
+
+    function cleanup() {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("keydown", onKey);
+      sec.removeEventListener("touchstart", onTS);
+      sec.removeEventListener("touchmove", onTM);
+      v?.removeEventListener("seeked", onSeeked);
+      wv?.removeEventListener("seeked", onWSeeked);
+      av?.removeEventListener("seeked", onASeeked);
+    }
+    return () => { if (!released) { cleanup(); unlock(); } };
+  }, []);
+
+  return (
+    <section ref={secRef} className={"intro sv" + (done ? " done" : "")} aria-label="인트로: 오디션의 시작">
+      <img ref={grp} className="sv-img sv-group" src="intro/group.jpg" alt="무대 위 다섯 명의 연습생" />
+      <div ref={vs} className="sv-vs" aria-hidden="true">
+        <div ref={vsL} className="sv-half l" />
+        <div ref={vsR} className="sv-half r" />
+        <svg ref={seam} className="sv-seam" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="54" y1="0" x2="46" y2="100" /></svg>
+        <span ref={vsMark} className="sv-mark">VS</span>
+      </div>
+      <img ref={s2} className="sv-img" src="intro/s2.jpg" alt="" />
+      <video ref={awakeRef} className="sv-img sv-awake" src="intro/awake.mp4" poster="intro/awake.jpg" muted playsInline preload="auto" />
+      <div ref={wrapRef} className="sv-doorwrap">
+        <video ref={vidRef} className="sv-img sv-doors" src="intro/doors_c.mp4" poster="intro/doors_c.jpg" muted playsInline preload="auto" />
+      </div>
+      <div ref={whiteRef} className="sv-white" aria-hidden="true" />
+      <div className="sv-shade" aria-hidden="true" />
+
+      <div className="intro-lines">
+        {INTRO_LINES.map((l, k) => <p key={k} ref={(n) => { lineRefs.current[k] = n; }} className="intro-line">{l.text}</p>)}
+        <div ref={titleRef} className="intro-title">
+          <h1>Beyond The Voice,<br />New Era</h1>
+          <p>K-POP IDOL DEBUT PROJECT</p>
+        </div>
+      </div>
+
+      <div className="intro-hint"><span ref={hintRef}>SCROLL</span><svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true"><path d="M7 1 L7 17 M2 12 L7 17 L12 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg></div>
+      {!done && <button type="button" className="chip intro-skip" onClick={() => api.current.skip?.()}>인트로 건너뛰기</button>}
+      <div className="intro-bar"><div ref={barRef} /></div>
+    </section>
+  );
+}
+
+/* ───────────── Page ───────────── */
+const LABELS = { chooseFloor: "층을 누르세요", floor: "FLOOR", stepInside: "이 방으로 들어가기", backToElevator: "엘리베이터로", returnHint: "누르면 돌아갑니다", arrived: "도착", imageUnavailable: "이미지를 불러오지 못했어요", empty: "층이 없습니다" };
+
+function App() {
+  const [floor, setFloor] = React.useState(0);
+  const [inside, setInside] = React.useState(false);
+  const [film, setFilm] = React.useState(null);
+  const [pv, setPv] = React.useState(null);
+  const [deck, setDeck] = React.useState(false);
+  const closePv = React.useCallback(() => setPv(null), []);
+  const closeDeck = React.useCallback(() => setDeck(false), []);
+  const timer = React.useRef(0);
+  const m = MEMBERS[floor];
+
+  React.useEffect(() => () => clearTimeout(timer.current), []);
+  const onStepInside = (item) => {
+    clearTimeout(timer.current);
+    // The doorway photo zooms to fill the card, then the room's film takes over.
+    timer.current = setTimeout(() => setFilm(MEMBERS.find((x) => x.src === item.src) || null), 650);
+  };
+  const onInsideChange = (v) => { setInside(v); if (!v) { clearTimeout(timer.current); setFilm(null); } };
+  const closeFilm = React.useCallback(() => { setFilm(null); setInside(false); }, []);
+  const goGoods = React.useCallback(() => {
+    setFilm(null); setInside(false);
+    setTimeout(() => document.getElementById("goods")?.scrollIntoView({ behavior: "smooth", block: "start" }), 450);
+  }, []);
+  const pick = (i) => { if (!inside) setFloor(i); };
+
+  return (
+    <div className="dark" style={{ "--accent": m.accent }}>
+      <Intro onDone={() => setTimeout(() => document.getElementById("stage")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60)} />
+      <div className="backdrop" aria-hidden="true" id="stage-bg">
+        {MEMBERS.map((x, i) => <img key={x.id} src={x.src} alt="" className={i === floor ? "on" : ""} />)}
+      </div>
+      <div className="wrap" id="stage">
+        <header className="top">
+          <span className="brand">Beyond The Voice, New Era</span>
+          <span className="meta">K-POP Idol Debut Project</span>
+        </header>
+
+        <section className="stage" aria-label="엘리베이터">
+          <div className="story" key={m.id}>
+            <div className="room swap">{String(m.floor).padStart(2, "0")}F · {m.room}</div>
+            <h1 className="name-en swap" style={{ animationDelay: "60ms" }}>{m.en}</h1>
+            <div className="name-ko swap" style={{ animationDelay: "120ms" }}>{m.ko}<span>{m.locked ? "참가번호 06 · 공개 전" : `참가번호 ${String(m.floor).padStart(2, "0")}`}</span></div>
+            <p className="line swap" style={{ animationDelay: "180ms" }}>“{m.line}”</p>
+            <p className="hint swap" style={{ animationDelay: "240ms" }}>{m.locked ? "6층은 아직 열리지 않았어요. 문을 두드리면, 누가 기다리고 있는지 힌트를 얻을 수 있을지도." : `문 속 얼굴을 누르면 ${m.ko}의 방이 열리고, 스크롤 끝의 한 문장이 그의 PV로 이어집니다.`}</p>
+          </div>
+          <ElevatorDoorsGallery items={MEMBERS} floor={floor} onFloorChange={setFloor}
+            inside={inside} onInsideChange={onInsideChange} onStepInside={onStepInside}
+            labels={LABELS} className="backdrop-blur-xl" style={{ justifySelf: "center" }} aria-label="층 선택 엘리베이터" />
+        </section>
+
+        <nav className="roster" aria-label="참가자">
+          {MEMBERS.map((x, i) => (
+            <button key={x.id} type="button" aria-pressed={i === floor} onClick={() => pick(i)} style={{ "--c": x.accent }}>
+              <div className="ph"><img src={x.src} alt="" /></div>
+              <div className="cap"><b>{x.ko}</b><i>{String(x.floor).padStart(2, "0")}F</i></div>
+            </button>
+          ))}
+        </nav>
+
+        <Goods current={m.id} onDeck={() => setDeck(true)} />
+
+        <footer className="foot">
+          <span>Beyond The Voice, New Era · 10부작 · 2027 2Q 방영 예정</span>
+          <OriginButton onClick={() => setDeck(true)} className="ob-sm">시안 보러가기 →</OriginButton>
+        </footer>
+      </div>
+      {film && (film.locked ? <LockedRoom m={film} onClose={closeFilm} /> : <RoomFilm key={film.id} m={film} onClose={closeFilm} onGoods={goGoods} onPv={setPv} />)}
+      {pv && <PvModal m={pv} onClose={closePv} />}
+      {deck && <DeckModal onClose={closeDeck} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+</body>
+</html>
