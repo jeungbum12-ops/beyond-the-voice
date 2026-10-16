@@ -319,6 +319,19 @@ body { font-family: var(--body); overflow-x: hidden; word-break: keep-all; }
 .bb-lg .bb-arrow { width: 46px; }
 .bb .bb-arrow { min-width: 40px; }
 @media (prefers-reduced-motion: reduce) { .bb-label, .bb-arrow { transition: none; } }
+
+/* Portrait phones: show the whole 16:9 frame (or a gentle crop) over a blurred fill, instead of cutting the sides off */
+@media (orientation: portrait) and (max-aspect-ratio: 4/5) {
+  .pf { object-fit: contain !important; background-position: center; background-size: cover; background-repeat: no-repeat; }
+  .pf-doors { background-image: url(intro/doors_c_blur.jpg); scale: 2.1; }
+  .pf-s2 { background-image: url(intro/s2_blur.jpg); scale: 1.5; }
+  .pf-awake { background-image: url(intro/awake_blur.jpg); scale: 1.45; }
+  .pf-group { background-image: url(intro/group_blur.jpg); scale: 1.12; }
+  .sv-half { background: url(intro/vs.jpg) center / 100% auto no-repeat, url(intro/vs_blur.jpg) center / cover no-repeat; }
+  .film-video { object-fit: contain !important; scale: 1.18; }
+  .sv .intro-lines { padding-bottom: 12vh; }
+  .sv .intro-line { font-size: clamp(22px, 6.4vw, 30px); }
+}
 @media (prefers-reduced-motion: reduce) {
   .swap, .film { animation: none; }
   .backdrop img, .roster img { transition: none; }
@@ -940,8 +953,8 @@ function RoomFilm({ m, onClose, onGoods, onPv }) {
 
   return (
     <div ref={sectionRef} className="film" role="dialog" aria-modal="true" aria-label={`${m.ko}의 방`}
-      style={{ position: "fixed", inset: 0, zIndex: 60, overflow: "hidden", background: `#05060a url(${m.src}) center / cover no-repeat`, touchAction: "none" }}>
-      <video ref={videoRef} src={m.video} poster={m.src} muted playsInline preload="auto"
+      style={{ position: "fixed", inset: 0, zIndex: 60, overflow: "hidden", background: `#05060a url(img/${m.id}_blur.jpg) center / cover no-repeat`, touchAction: "none" }}>
+      <video ref={videoRef} className="film-video" src={m.video} poster={m.src} muted playsInline preload="auto" data-blur={`img/${m.id}_blur.jpg`}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 1, transformOrigin: "center", willChange: "transform", transition: "opacity .6s ease", pointerEvents: "none" }} />
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(5,6,10,.55), rgba(5,6,10,0) 28%, rgba(5,6,10,0) 52%, rgba(5,6,10,.82))", pointerEvents: "none" }} />
 
@@ -1329,17 +1342,17 @@ function Intro({ onDone }) {
 
   return (
     <section ref={secRef} className={"intro sv" + (done ? " done" : "")} aria-label="인트로: 오디션의 시작">
-      <img ref={grp} className="sv-img sv-group" src="intro/group.jpg" alt="무대 위 다섯 명의 연습생" />
+      <img ref={grp} className="sv-img sv-group pf pf-group" src="intro/group.jpg" alt="무대 위 다섯 명의 연습생" />
       <div ref={vs} className="sv-vs" aria-hidden="true">
         <div ref={vsL} className="sv-half l" />
         <div ref={vsR} className="sv-half r" />
         <svg ref={seam} className="sv-seam" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="54" y1="0" x2="46" y2="100" /></svg>
         <span ref={vsMark} className="sv-mark">VS</span>
       </div>
-      <img ref={s2} className="sv-img" src="intro/s2.jpg" alt="" />
-      <video ref={awakeRef} className="sv-img sv-awake" src="intro/awake.mp4" poster="intro/awake.jpg" muted playsInline preload="auto" />
+      <img ref={s2} className="sv-img pf pf-s2" src="intro/s2.jpg" alt="" />
+      <video ref={awakeRef} className="sv-img sv-awake pf pf-awake" src="intro/awake.mp4" poster="intro/awake.jpg" muted playsInline preload="auto" />
       <div ref={wrapRef} className="sv-doorwrap">
-        <video ref={vidRef} className="sv-img sv-doors" src="intro/doors_c.mp4" poster="intro/doors_c.jpg" muted playsInline preload="auto" />
+        <video ref={vidRef} className="sv-img sv-doors pf pf-doors" src="intro/doors_c.mp4" poster="intro/doors_c.jpg" muted playsInline preload="auto" />
       </div>
       <div ref={whiteRef} className="sv-white" aria-hidden="true" />
       <div className="sv-shade" aria-hidden="true" />
