@@ -817,7 +817,7 @@ function ElevatorDoorsGallery({ items, defaultFloor = 0, floor, onFloorChange, i
             {scene.item.caption && <p className="mt-2 text-sm opacity-90">{scene.item.caption}</p>}
             <p className="mt-5 text-[11px] uppercase tracking-[0.16em] opacity-65">{text.returnHint}</p>
           </div>
-          <BackButton data-back-to-elevator onClick={(event) => { event.stopPropagation(); backToElevator(); }} style={{ position: "absolute", left: 16, top: 16 }}>{text.backToElevator}</BackButton>
+          <BackButton data-back-to-elevator onClick={(event) => { event.stopPropagation(); backToElevator(); }} style={{ position: "absolute", right: 16, top: 16 }}>{text.backToElevator}</BackButton>
         </div>
       )}
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</div>
@@ -977,7 +977,7 @@ function RoomFilm({ m, onClose, onGoods, onPv }) {
       </div>
 
       <BackButton ref={closeRef} onClick={onClose}
-        style={{ position: "absolute", top: "calc(14px + env(safe-area-inset-top, 0px))", left: "max(16px, env(safe-area-inset-left, 0px))" }}>
+        style={{ position: "absolute", top: "calc(14px + env(safe-area-inset-top, 0px))", right: "max(16px, env(safe-area-inset-right, 0px))" }}>
         엘리베이터로
       </BackButton>
 
